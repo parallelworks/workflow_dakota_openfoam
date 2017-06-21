@@ -3,8 +3,8 @@
 # get the coaster service address
 coasterurl=$(cat swift.conf | grep URL | sed "s/URL: \"//g" | sed "s/\"//")
 
-dprepro $1 input.template input.in --output-format="%d"
-echo "inlet5_X,5,inlet6_Y,7" > input.in
+dprepro $1 input.template input.in --output-format="%f"
+#echo "inlet5_X,5,inlet6_Y,7" > input.in
 cat input.in
 
 

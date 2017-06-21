@@ -24,8 +24,8 @@ model
 variables
  id_variables = 'V1'
  uniform_uncertain = 2
- upper_bounds     	10		20   
- lower_bounds     	0   		0
+ upper_bounds     	8		9   
+ lower_bounds     	5   		4
  descriptors 'inlet5_X' 'inlet6_Y'
 
 interface
