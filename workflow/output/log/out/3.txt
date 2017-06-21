@@ -1,0 +1,43 @@
+sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,8 output/tgz/3.tgz output/png/inlet5_X,5,inlet6_Y,8.png sample_inputs/elbowKPI.json
+case/elbow.msh
+case/Allclean
+case/constant/
+case/constant/transportProperties
+case/system/
+case/system/foamDataToFluentDict
+case/system/controlDict
+case/system/fvSchemes
+case/system/fvSolution
+case/0/
+case/0/U
+case/0/p
+case/Allrun
+Parameter Length: 4
+
+------ START RUNFILE ------
+. /opt/openfoam4/etc/bashrc
+. /opt/openfoam4/bin/tools/RunFunctions
+#!/bin/sh
+#cd ${0%/*} || exit 1    # Run from this directory
+
+# Source tutorial run functions
+. $WM_PROJECT_DIR/bin/tools/RunFunctions
+
+# Get application directory
+application=`getApplication`
+
+runApplication fluentMeshToFoam elbow.msh
+runApplication "$application"
+#runApplication foamMeshToFluent
+#runApplication foamDataToFluent
+
+#------------------------------------------------------------------------------
+------ END RUNFILE ------
+
+Running fluentMeshToFoam on /scratch
+Running icoFoam on /scratch
+{'ClipUy': {'opacity': '1', 'invertcolor': '0', 'min': '0', 'plane': 'Y', 'max': '4', 'image': 'top', 'colorscale': 'Blue to Red Rainbow', 'fieldComponent': 'Y', 'field': 'U', 'animation': 'true', 'discretecolors': '20', 'bodyopacity': '0.3', 'position': 'center -5.0 center', 'type': 'Clip', 'invert': 'false'}, 'ClipUx': {'opacity': '1', 'invertcolor': '0', 'min': '0', 'plane': 'X', 'max': '5', 'image': 'top', 'colorscale': 'Blue to Red Rainbow', 'fieldComponent': 'X', 'field': 'U', 'animation': 'false', 'discretecolors': '20', 'bodyopacity': '0.3', 'position': '10.0  center center', 'type': 'Clip', 'invert': 'true'}}
+Setting view to latest Time: 10.0
+Generating KPIs
+ClipUy
+ClipUx

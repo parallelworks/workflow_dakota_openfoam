@@ -1,0 +1,40 @@
+Swift trunk git-rev: 04208acc2a9af9ea900ae5c4a1d01bcc93ac07d2 heads/master 6744
+RunID: run003
+Progress: Wed, 14 Jun 2017 12:01:20-0400
+Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run003/jobs/e/expandSweep-t3c93l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: mkdir /tmp/swiftwork/openfoam-run003/jobs/e/expandSweep-t3c93l9n-0: Permission denied at /core/xinchen/swift-k/dist/swift-svn/bin/worker.pl line 1468.
+
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run003/jobs/e/expandSweep-t3c93l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: mkdir /tmp/swiftwork/openfoam-run003/jobs/e/expandSweep-t3c93l9n-0: Permission denied at /core/xinchen/swift-k/dist/swift-svn/bin/worker.pl line 1468.
+
+
+<exception>Final status: Wed, 14 Jun 2017 12:01:21-0400  Failed:1
+The following errors have occurred:
+1. Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run003/jobs/e/expandSweep-t3c93l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: mkdir /tmp/swiftwork/openfoam-run003/jobs/e/expandSweep-t3c93l9n-0: Permission denied at /core/xinchen/swift-k/dist/swift-svn/bin/worker.pl line 1468.
+
+
+	k:assign @ swift.k, line: 157

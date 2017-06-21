@@ -1,0 +1,125 @@
+1
+
+                                             * * * * * * * * *  L H S  * * * * * * * * *
+
+                                             LATIN HYPERCUBE AND RANDOM SAMPLING PROGRAM
+
+                                             * * * * * * * * * * * * * * * * * * * * * *
+
+
+    Run on  6/21/17 at 21:48:56.84 with LHS Version: 2.30 Release 1, Compiled May 31, 2001        
+
+
+0    Pecos::LHSDriver
+
+    Random Seed =       52983
+
+    Number of Variables =   2
+
+    Number of Observations =    3
+0   The sample was written to the file: LHS_samples.out
+0   Input was read from the file: 
+0   The sample input vectors will be printed along with their corresponding ranks.
+0   Histograms of the actual sample will be plotted for each input variable.
+0   The correlation matrices (raw data and rank correlations) will be printed.
+1
+
+    Pecos::LHSDriver                                                                                                             
+
+    VARIABLE  DISTRIBUTION          RANGE            LABEL
+0       1        UNIFORM     0.00     TO   10.0                                                        
+0       2        UNIFORM     0.00     TO   20.0                                                        
+1Pecos::LHSDriver                                                                                                             
+0LATIN HYPERCUBE SAMPLE INPUT VECTORS
+
+ RUN NO. X(1)      X(2)
+0    1  7.73      16.3    
+0    2 0.806      11.6    
+0    3  3.67      4.46    
+1Pecos::LHSDriver                                                                                                             
+0RANKS OF LATIN HYPERCUBE SAMPLE INPUT VECTORS
+
+ RUN NO.    X(1)      X(2)
+0    1        3.        3.
+0    2        1.        2.
+0    3        2.        1.
+1   Pecos::LHSDriver                                                                                                             
+0  HISTOGRAM FOR VARIABLE NO.  1     UNIFORM DISTRIBUTION
+
+     Midpoint          Freq.
+
+   8.7499998E-01         1    X
+   1.2250000E+00         0
+   1.5750000E+00         0
+   1.9250000E+00         0
+   2.2749999E+00         0
+   2.6249999E+00         0
+   2.9749999E+00         0
+   3.3249999E+00         0
+   3.6749999E+00         1    X
+   4.0249999E+00         0
+   4.3749999E+00         0
+   4.7249999E+00         0
+   5.0749999E+00         0
+   5.4249999E+00         0
+   5.7749999E+00         0
+   6.1249999E+00         0
+   6.4749999E+00         0
+   6.8249998E+00         0
+   7.1749998E+00         0
+   7.5249998E+00         0
+   7.8749998E+00         1    X
+0                        3
+
+
+      Min            Max           Range           Mean          Median        Variance
+
+   8.0554416E-01  7.7264951E+00  6.9209509E+00  4.0667604E+00  3.6682420E+00  8.0626687E+00
+
+1   Pecos::LHSDriver                                                                                                             
+0  HISTOGRAM FOR VARIABLE NO.  2     UNIFORM DISTRIBUTION
+
+     Midpoint          Freq.
+
+   4.4249999E+00         1    X
+   5.0149999E+00         0
+   5.6049999E+00         0
+   6.1949999E+00         0
+   6.7849998E+00         0
+   7.3749998E+00         0
+   7.9649998E+00         0
+   8.5549998E+00         0
+   9.1449998E+00         0
+   9.7349998E+00         0
+   1.0325000E+01         0
+   1.0915000E+01         0
+   1.1505000E+01         1    X
+   1.2095000E+01         0
+   1.2685000E+01         0
+   1.3275000E+01         0
+   1.3865000E+01         0
+   1.4455000E+01         0
+   1.5045000E+01         0
+   1.5635000E+01         0
+   1.6225000E+01         1    X
+0                        3
+
+
+      Min            Max           Range           Mean          Median        Variance
+
+   4.4612373E+00  1.6305993E+01  1.1844756E+01  1.0800407E+01  1.1633990E+01  2.3730471E+01
+
+1Pecos::LHSDriver                                                                                                             
+0CORRELATIONS AMONG INPUT VARIABLES CREATED BY THE LATIN HYPERCUBE SAMPLE FOR RAW DATA                              PAGE   1
+0    1  1.0000
+0    2  0.4809  1.0000
+0            1       2
+0VARIABLES
+0THE VARIANCE INFLATION FACTOR FOR THIS MATRIX IS  1.30
+1Pecos::LHSDriver                                                                                                             
+0CORRELATIONS AMONG INPUT VARIABLES CREATED BY THE LATIN HYPERCUBE SAMPLE FOR RANK DATA                              PAGE   1
+0    1  1.0000
+0    2  0.5000  1.0000
+0            1       2
+0VARIABLES
+0THE VARIANCE INFLATION FACTOR FOR THIS MATRIX IS  1.33

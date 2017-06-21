@@ -1,0 +1,222 @@
+2017-06-14 11:56:25,968-0400 INFO  Loader JAVA Oracle Corporation Java HotSpot(TM) 64-Bit Server VM 1.8.0_131
+2017-06-14 11:56:25,970-0400 INFO  Loader VERSION Swift trunk git-rev: 04208acc2a9af9ea900ae5c4a1d01bcc93ac07d2 heads/master 6744
+2017-06-14 11:56:25,970-0400 INFO  Loader RUN_ID run001
+2017-06-14 11:56:25,970-0400 INFO  Loader ARGUMENTS [-runid, run001, -logfile, /core/xinchen/openfoam_elbow_sweep/withME_Coaster/workflow/run001/swift.log, openfoam.swift]
+2017-06-14 11:56:25,970-0400 INFO  Loader MAX_HEAP 954728448
+2017-06-14 11:56:25,970-0400 INFO  Loader GLOBUS_HOSTNAME ip-172-31-32-236
+2017-06-14 11:56:25,970-0400 INFO  Loader CWD /core/xinchen/openfoam_elbow_sweep/withME_Coaster/workflow/.
+2017-06-14 11:56:25,971-0400 DEBUG Loader SWIFT_CONFIGURATION 
+[D] /core/xinchen/swift-k/dist/swift-svn/etc/swift.conf
+[R] swift.conf
+[C] <Command Line>
+{
+	TCPPortRange: "50000, 50100"                               # [D] line 27
+	alwaysTransferWrapperLog: false                            # [R] line 42
+	executionRetries: 0                                        # [R] line 39
+	fileOperationsThrottle: 8                                  # [D] line 121
+	fileTransfersThrottle: 4                                   # [D] line 107
+	hostJobSubmitThrottle: 2                                   # [D] line 95
+	jobSubmitThrottle: 4                                       # [D] line 83
+	keepSiteDir: false                                         # [R] line 40
+	lazyErrors: true                                           # [R] line 38
+	logProvenance: false                                       # [D] line 200
+	maxForeachThreads: 16384                                   # [D] line 194
+	providerStagingPinSwiftFiles: false                        # [R] line 41
+	replicationEnabled: false                                  # [D] line 146
+	replicationLimit: 3                                        # [D] line 157
+	replicationMinQueueTime: 60                                # [D] line 153
+	site {
+		linuxpool {
+			app {
+				ALL.executable: "*"                                     # [R] line 17
+				bash {
+					exclusive: true                                        # [R] line 21
+					maxWallTime: "48:00:00"                                # [R] line 20
+					options.docker {
+						alwaysPull: false                                     # [R] line 27
+						image: "parallelworks/openfoam4"                      # [R] line 24
+						jobDirMountPoint: "/scratch"                          # [R] line 25
+						registry: "docker.io"                                 # [R] line 26
+					}
+				}
+				python {
+					exclusive: true                                        # [R] line 34
+					executable: "python"                                   # [R] line 32
+					maxWallTime: "00:10:00"                                # [R] line 33
+				}
+			}
+			execution {
+				URL: "http://go.parallel.works:9022"                    # [R] line 6
+				type: "coaster-persistent"                              # [R] line 5
+			}
+			initialParallelTasks: 999999                             # [R] line 10
+			maxParallelTasks: 999999                                 # [R] line 11
+			staging: "local"                                         # [R] line 9
+			workDirectory: "/tmp/swiftwork"                          # [R] line 12
+		}
+		local {
+			app.ALL.executable: "*"                                  # [D] line 232
+			execution.type: "local"                                  # [D] line 223
+			filesystem.type: "local"                                 # [D] line 226
+			workDirectory: "swiftwork"                               # [D] line 229
+		}
+	}
+	sites: [linuxpool]                                         # [R] line 1
+	tracingEnabled: false                                      # [D] line 51
+}
+
+2017-06-14 11:56:25,972-0400 DEBUG textfiles BEGIN SWIFTSCRIPT:
+type file;
+
+# -- INPUT / OUTPUT DEFINITIONS
+# Parallel.Works automates the creation of the Swift run command using your workflow definition
+# e.g. swift openfoam.swift -input=motorBike.tgz -decompose=decomposeParDict -results=openfoam_runner -nproc='2'
+# Swift needs to pick up the run arguments with the arg() command
+
+file input 			<arg("input","sample_inputs/elbow.tgz")>;
+file state 			<arg("state","sample_inputs/elbow.pvsm")>;
+file JSONfile                   <"sample_inputs/elbowKPI.json">;
+
+file sweep			<"sample_inputs/params.run">;
+
+file utils[] 		<filesys_mapper;location="utils">;
+
+file out    		<arg("results","results.tgz")>;
+file html    		<arg("html","results.html")>;
+
+
+# -- APP DEFINITIONS
+
+app (file cases) expandSweep (file sweep,file[] utils) {
+	python "utils/expandSweep.py" @sweep "cases.list";
+}
+
+app (file out,file outpng,file sout,file serr) runOpenfoam (file input,string c,file state,file utils[], file JSONfile)
+{
+    bash "utils/runOpenfoam.sh" @input @state c @out @outpng @JSONfile stdout=@sout stderr=@serr;
+}
+
+app (file out,file html) postSweep (file pngs[],file logs[],file utils[], string rpath) {
+	bash "utils/postSweep.sh" @out @html rpath;
+}
+
+
+# -- WORKFLOW COMMANDS
+
+file caseFile 	<"cases.list">;
+caseFile = expandSweep(sweep,utils);
+string[] cases = readData(caseFile);
+
+tracef("\n%i Cases in Simulation\n\n",length(cases));
+
+file outpngs[];
+file outlogs[];
+foreach c,i in cases {
+	file outtar  		<strcat("output/tgz/",i,".tgz")>;
+	file outpng  		<strcat("output/png/",c,".png")>;
+    file sout  			<strcat("output/log/out/",i,".txt")>;
+    file serr  			<strcat("output/log/err/",i,".txt")>;
+	(outtar,outpng,sout,serr) = runOpenfoam(input,c,state,utils,JSONfile);
+	outpngs[i] = outpng;
+	outlogs[i] = sout;
+}
+
+#(out,html) = postSweep(outpngs,outlogs,utils,rpath);
+
+
+
+2017-06-14 11:56:25,972-0400 DEBUG textfiles END SWIFTSCRIPT:
+2017-06-14 11:56:25,972-0400 DEBUG Loader kmlversion is >03153d0c-11a0-45f9-8495-1d1a00295d88-no-provenance<
+2017-06-14 11:56:25,972-0400 DEBUG Loader build version is >03153d0c-11a0-45f9-8495-1d1a00295d88-no-provenance<
+2017-06-14 11:56:25,972-0400 DEBUG Loader Recompilation suppressed.
+2017-06-14 11:56:26,324-0400 INFO  Loader RUN_START
+2017-06-14 11:56:26,326-0400 INFO  SwiftExecutor swift.home = /core/xinchen/swift-k/dist/swift-svn
+2017-06-14 11:56:26,344-0400 INFO  AbstractScheduler Setting resources to: {linuxpool=linuxpool}
+2017-06-14 11:56:26,350-0400 INFO  GlobalSubmitQueue No global submit throttle set. Using default (1024)
+2017-06-14 11:56:26,359-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 11:56:26,360-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 11:56:26,362-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 11:56:26,385-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 81921616, JVMThreads: 16
+2017-06-14 11:56:26,385-0400 INFO  RuntimeStats$ProgressTicker 
+2017-06-14 11:56:26,393-0400 DEBUG swift PROCEDURE line=22 thread=2-0-11-8 name=expandSweep
+2017-06-14 11:56:26,395-0400 DEBUG swift INTERNALPROC_START thread=2-0-12-9 name=readData
+2017-06-14 11:56:26,397-0400 DEBUG swift JOB_INIT jobid=expandSweep-eog23l9n tr=expandSweep
+2017-06-14 11:56:26,397-0400 DEBUG swift JOB_SITE_SELECT jobid=expandSweep-eog23l9n-0
+2017-06-14 11:56:26,398-0400 DEBUG swift INTERNALPROC_START thread=2-0-13-10 name=tracef
+2017-06-14 11:56:26,401-0400 DEBUG swift THREAD_ASSOCIATION jobid=expandSweep-eog23l9n-0 host=linuxpool thread=2-0-11-8
+2017-06-14 11:56:26,402-0400 DEBUG swift JOB_START jobid=expandSweep-eog23l9n-0 tr=expandSweeppython utils/expandSweep.py sample_inputs/params.run cases.list tmpdir=openfoam-run001/jobs/e/expandSweep-eog23l9n-0
+2017-06-14 11:56:26,411-0400 INFO  Execute JOB_TASK jobid=expandSweep-eog23l9n-0 taskid=task-11 exec=/bin/bash dir=openfoam-run001/jobs/e/expandSweep-eog23l9n-0 args=_swiftwrap.staging -d sample_inputs|utils -if utils/extract.py|utils/expandSweep.py|utils/snapshot.sh|utils/cleanup.sh|utils/prepInputs.sh|utils/pvutils.py|utils/extract.sh|utils/plot.py|utils/pvutils.pyc|sample_inputs/params.run|utils/runOpenfoam.sh|utils/data_IO.pyc|utils/data_IO.py|utils/postSweep.sh -of cases.list -cf  -cdmfile  -status provider -e python -out -err -i -a utils/expandSweep.py sample_inputs/params.run cases.list
+2017-06-14 11:56:26,417-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=8
+2017-06-14 11:56:26,432-0400 INFO  AbstractCoasterChannel TCPChannel[client, http://go.parallel.works:9022] setting name to http://go.parallel.works:9022
+2017-06-14 11:56:26,564-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=1
+2017-06-14 11:56:26,564-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=2
+2017-06-14 11:56:26,564-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=5
+2017-06-14 11:56:26,566-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 11:56:26,566-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 11:56:26,571-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 11:56:26,571-0400 DEBUG swift APPLICATION_EXCEPTION jobid=expandSweep-eog23l9n-0 - Application exception: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: null
+Caused by: org.globus.cog.abstraction.impl.common.task.TaskSubmissionException: Could not submit job
+Caused by: org.globus.cog.coaster.channels.ChannelException: Failed to create socket
+Caused by: java.net.ConnectException: Connection refused
+2017-06-14 11:56:26,571-0400 INFO  swift END_FAILURE jobid=expandSweep-eog23l9n tr=expandSweep
+2017-06-14 11:56:26,572-0400 INFO  swift Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run001/jobs/e/expandSweep-eog23l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: null
+Caused by: org.globus.cog.abstraction.impl.common.task.TaskSubmissionException: Could not submit job
+Caused by: org.globus.cog.coaster.channels.ChannelException: Failed to create socket
+Caused by: java.net.ConnectException: Connection refused
+	k:assign @ swift.k, line: 157
+Caused by: Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run001/jobs/e/expandSweep-eog23l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: null
+Caused by: org.globus.cog.abstraction.impl.common.task.TaskSubmissionException: Could not submit job
+Caused by: org.globus.cog.coaster.channels.ChannelException: Failed to create socket
+Caused by: java.net.ConnectException: Connection refused
+2017-06-14 11:56:26,572-0400 DEBUG swift PROCEDURE_END line=22 thread=2-0-11-8 name=expandSweep
+2017-06-14 11:56:26,578-0400 DEBUG swift INTERNALPROC_END thread=2-0-12-9 name=readData
+2017-06-14 11:56:26,578-0400 INFO  Tracef <exception>
+2017-06-14 11:56:26,578-0400 DEBUG swift INTERNALPROC_END thread=2-0-13-10 name=tracef
+2017-06-14 11:56:26,578-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 124201752, JVMThreads: 32
+2017-06-14 11:56:26,579-0400 INFO  RuntimeStats$ProgressTicker   Failed:1
+2017-06-14 11:56:26,588-0400 INFO  swift Errors detected. Cleanup not done.
+2017-06-14 11:56:26,589-0400 INFO  Executor Run failed
+Execution completed with errors
+	throw @ swift.k, line: 112
+	swift:mains @ openfoam, line: 185
+
+	at org.globus.cog.karajan.compiled.nodes.Throw.runBody(Throw.java:51)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.If.run(If.java:184)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.user.Function.runBody(Function.java:123)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.runBody(InvocationWrapper.java:288)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.run(InvocationWrapper.java:93)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.griphyn.vdl.karajan.lib.restartLog.RestartLog.runBody(RestartLog.java:104)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.FramedInternalFunction.run(FramedInternalFunction.java:82)
+	at k.thr.LWThread.run(LWThread.java:291)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+	at java.lang.Thread.run(Thread.java:748)
+2017-06-14 11:56:26,590-0400 INFO  Loader Swift finished with errors
+2017-06-14 11:56:26,591-0400 INFO  ChannelManager Notifying peers of shutdown

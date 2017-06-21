@@ -1,0 +1,1214 @@
+2017-06-14 12:02:59,298-0400 INFO  Loader JAVA Oracle Corporation Java HotSpot(TM) 64-Bit Server VM 1.8.0_131
+2017-06-14 12:02:59,300-0400 INFO  Loader VERSION Swift trunk git-rev: 04208acc2a9af9ea900ae5c4a1d01bcc93ac07d2 heads/master 6744
+2017-06-14 12:02:59,300-0400 INFO  Loader RUN_ID run004
+2017-06-14 12:02:59,300-0400 INFO  Loader ARGUMENTS [-runid, run004, -logfile, /core/xinchen/openfoam_elbow_sweep/withME_Coaster/workflow/run004/swift.log, openfoam.swift]
+2017-06-14 12:02:59,300-0400 INFO  Loader MAX_HEAP 954728448
+2017-06-14 12:02:59,300-0400 INFO  Loader GLOBUS_HOSTNAME ip-172-31-32-236
+2017-06-14 12:02:59,300-0400 INFO  Loader CWD /core/xinchen/openfoam_elbow_sweep/withME_Coaster/workflow/.
+2017-06-14 12:02:59,301-0400 DEBUG Loader SWIFT_CONFIGURATION 
+[D] /core/xinchen/swift-k/dist/swift-svn/etc/swift.conf
+[R] swift.conf
+[C] <Command Line>
+{
+	TCPPortRange: "50000, 50100"                               # [D] line 27
+	alwaysTransferWrapperLog: false                            # [R] line 42
+	executionRetries: 0                                        # [R] line 39
+	fileOperationsThrottle: 8                                  # [D] line 121
+	fileTransfersThrottle: 4                                   # [D] line 107
+	hostJobSubmitThrottle: 2                                   # [D] line 95
+	jobSubmitThrottle: 4                                       # [D] line 83
+	keepSiteDir: false                                         # [R] line 40
+	lazyErrors: true                                           # [R] line 38
+	logProvenance: false                                       # [D] line 200
+	maxForeachThreads: 16384                                   # [D] line 194
+	providerStagingPinSwiftFiles: false                        # [R] line 41
+	replicationEnabled: false                                  # [D] line 146
+	replicationLimit: 3                                        # [D] line 157
+	replicationMinQueueTime: 60                                # [D] line 153
+	site {
+		linuxpool {
+			app {
+				ALL.executable: "*"                                     # [R] line 17
+				bash {
+					exclusive: true                                        # [R] line 21
+					maxWallTime: "48:00:00"                                # [R] line 20
+					options.docker {
+						alwaysPull: false                                     # [R] line 27
+						image: "parallelworks/openfoam4"                      # [R] line 24
+						jobDirMountPoint: "/scratch"                          # [R] line 25
+						registry: "docker.io"                                 # [R] line 26
+					}
+				}
+				python {
+					exclusive: true                                        # [R] line 34
+					executable: "python"                                   # [R] line 32
+					maxWallTime: "00:10:00"                                # [R] line 33
+				}
+			}
+			execution {
+				URL: "http://localhost:4030"                            # [R] line 7
+				type: "coaster-persistent"                              # [R] line 5
+			}
+			initialParallelTasks: 999999                             # [R] line 10
+			maxParallelTasks: 999999                                 # [R] line 11
+			staging: "local"                                         # [R] line 9
+			workDirectory: "/tmp/swiftwork"                          # [R] line 12
+		}
+		local {
+			app.ALL.executable: "*"                                  # [D] line 232
+			execution.type: "local"                                  # [D] line 223
+			filesystem.type: "local"                                 # [D] line 226
+			workDirectory: "swiftwork"                               # [D] line 229
+		}
+	}
+	sites: [linuxpool]                                         # [R] line 1
+	tracingEnabled: false                                      # [D] line 51
+}
+
+2017-06-14 12:02:59,302-0400 DEBUG textfiles BEGIN SWIFTSCRIPT:
+type file;
+
+# -- INPUT / OUTPUT DEFINITIONS
+# Parallel.Works automates the creation of the Swift run command using your workflow definition
+# e.g. swift openfoam.swift -input=motorBike.tgz -decompose=decomposeParDict -results=openfoam_runner -nproc='2'
+# Swift needs to pick up the run arguments with the arg() command
+
+file input 			<arg("input","sample_inputs/elbow.tgz")>;
+file state 			<arg("state","sample_inputs/elbow.pvsm")>;
+file JSONfile                   <"sample_inputs/elbowKPI.json">;
+
+file sweep			<"sample_inputs/params.run">;
+
+file utils[] 		<filesys_mapper;location="utils">;
+
+file out    		<arg("results","results.tgz")>;
+file html    		<arg("html","results.html")>;
+
+
+# -- APP DEFINITIONS
+
+app (file cases) expandSweep (file sweep,file[] utils) {
+	python "utils/expandSweep.py" @sweep "cases.list";
+}
+
+app (file out,file outpng,file sout,file serr) runOpenfoam (file input,string c,file state,file utils[], file JSONfile)
+{
+    bash "utils/runOpenfoam.sh" @input @state c @out @outpng @JSONfile stdout=@sout stderr=@serr;
+}
+
+app (file out,file html) postSweep (file pngs[],file logs[],file utils[], string rpath) {
+	bash "utils/postSweep.sh" @out @html rpath;
+}
+
+
+# -- WORKFLOW COMMANDS
+
+file caseFile 	<"cases.list">;
+caseFile = expandSweep(sweep,utils);
+string[] cases = readData(caseFile);
+
+tracef("\n%i Cases in Simulation\n\n",length(cases));
+
+file outpngs[];
+file outlogs[];
+foreach c,i in cases {
+	file outtar  		<strcat("output/tgz/",i,".tgz")>;
+	file outpng  		<strcat("output/png/",c,".png")>;
+    file sout  			<strcat("output/log/out/",i,".txt")>;
+    file serr  			<strcat("output/log/err/",i,".txt")>;
+	(outtar,outpng,sout,serr) = runOpenfoam(input,c,state,utils,JSONfile);
+	outpngs[i] = outpng;
+	outlogs[i] = sout;
+}
+
+#(out,html) = postSweep(outpngs,outlogs,utils,rpath);
+
+
+
+2017-06-14 12:02:59,302-0400 DEBUG textfiles END SWIFTSCRIPT:
+2017-06-14 12:02:59,302-0400 DEBUG Loader kmlversion is >03153d0c-11a0-45f9-8495-1d1a00295d88-no-provenance<
+2017-06-14 12:02:59,302-0400 DEBUG Loader build version is >03153d0c-11a0-45f9-8495-1d1a00295d88-no-provenance<
+2017-06-14 12:02:59,302-0400 DEBUG Loader Recompilation suppressed.
+2017-06-14 12:02:59,643-0400 INFO  Loader RUN_START
+2017-06-14 12:02:59,645-0400 INFO  SwiftExecutor swift.home = /core/xinchen/swift-k/dist/swift-svn
+2017-06-14 12:02:59,663-0400 INFO  AbstractScheduler Setting resources to: {linuxpool=linuxpool}
+2017-06-14 12:02:59,669-0400 INFO  GlobalSubmitQueue No global submit throttle set. Using default (1024)
+2017-06-14 12:02:59,678-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:02:59,680-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:02:59,682-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:02:59,707-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 81920952, JVMThreads: 16
+2017-06-14 12:02:59,708-0400 INFO  RuntimeStats$ProgressTicker 
+2017-06-14 12:02:59,714-0400 DEBUG swift PROCEDURE line=22 thread=2-0-11-8 name=expandSweep
+2017-06-14 12:02:59,715-0400 DEBUG swift INTERNALPROC_START thread=2-0-12-9 name=readData
+2017-06-14 12:02:59,715-0400 DEBUG swift INTERNALPROC_START thread=2-0-13-10 name=tracef
+2017-06-14 12:02:59,719-0400 DEBUG swift JOB_INIT jobid=expandSweep-6rmb3l9n tr=expandSweep
+2017-06-14 12:02:59,720-0400 DEBUG swift JOB_SITE_SELECT jobid=expandSweep-6rmb3l9n-0
+2017-06-14 12:02:59,722-0400 DEBUG swift THREAD_ASSOCIATION jobid=expandSweep-6rmb3l9n-0 host=linuxpool thread=2-0-11-8
+2017-06-14 12:02:59,723-0400 DEBUG swift JOB_START jobid=expandSweep-6rmb3l9n-0 tr=expandSweeppython utils/expandSweep.py sample_inputs/params.run cases.list tmpdir=openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0
+2017-06-14 12:02:59,730-0400 INFO  Execute JOB_TASK jobid=expandSweep-6rmb3l9n-0 taskid=task-11 exec=/bin/bash dir=openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0 args=_swiftwrap.staging -d sample_inputs|utils -if utils/extract.py|utils/expandSweep.py|utils/snapshot.sh|utils/cleanup.sh|utils/prepInputs.sh|utils/pvutils.py|utils/extract.sh|utils/plot.py|utils/pvutils.pyc|sample_inputs/params.run|utils/runOpenfoam.sh|utils/data_IO.pyc|utils/data_IO.py|utils/postSweep.sh -of cases.list -cf  -cdmfile  -status provider -e python -out -err -i -a utils/expandSweep.py sample_inputs/params.run cases.list
+2017-06-14 12:02:59,736-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=8
+2017-06-14 12:02:59,755-0400 INFO  AbstractCoasterChannel TCPChannel[client, http://localhost:4030] setting name to http://localhost:4030
+2017-06-14 12:02:59,765-0400 INFO  AbstractTCPChannel http://localhost:4030: channel started
+2017-06-14 12:02:59,766-0400 INFO  AbstractCoasterChannel Timeout check started for http://localhost:4030
+2017-06-14 12:02:59,767-0400 INFO  AbstractStreamCoasterChannel Using NIO sender for http://localhost:4030
+2017-06-14 12:02:59,902-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=1
+2017-06-14 12:02:59,905-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=16 workerid=local:000000
+2017-06-14 12:02:59,906-0400 INFO  GetFileHandler Handler(tag: 4, GET) request complete; src=file://localhost/sample_inputs/params.run
+2017-06-14 12:02:59,910-0400 INFO  GetFileHandler Handler(tag: 4, GET) reader: LR-Handler(tag: 4, GET)
+2017-06-14 12:02:59,910-0400 INFO  GetFileHandler Handler(tag: 4, GET) sending length: 25, 998400045
+2017-06-14 12:02:59,914-0400 INFO  ReadBuffer RB-LR-Handler(tag: 4, GET) will ask for 1 buffers for a size of 25
+2017-06-14 12:02:59,915-0400 INFO  ReadBuffer RB-LR-Handler(tag: 4, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:02:59,915-0400 INFO  LocalIOProvider LR-Handler(tag: 4, GET) rbuf: RB-LR-Handler(tag: 4, GET)
+2017-06-14 12:02:59,915-0400 INFO  GetFileHandler Handler(tag: 4, GET) unregistering (last)
+2017-06-14 12:02:59,916-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,006-0400 INFO  GetFileHandler Handler(tag: 5, GET) request complete; src=file://localhost/utils/extract.sh
+2017-06-14 12:03:00,006-0400 INFO  GetFileHandler Handler(tag: 5, GET) reader: LR-Handler(tag: 5, GET)
+2017-06-14 12:03:00,006-0400 INFO  GetFileHandler Handler(tag: 5, GET) sending length: 950, 255904201
+2017-06-14 12:03:00,006-0400 INFO  ReadBuffer RB-LR-Handler(tag: 5, GET) will ask for 1 buffers for a size of 950
+2017-06-14 12:03:00,006-0400 INFO  ReadBuffer RB-LR-Handler(tag: 5, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,006-0400 INFO  LocalIOProvider LR-Handler(tag: 5, GET) rbuf: RB-LR-Handler(tag: 5, GET)
+2017-06-14 12:03:00,007-0400 INFO  GetFileHandler Handler(tag: 5, GET) unregistering (last)
+2017-06-14 12:03:00,007-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,106-0400 INFO  GetFileHandler Handler(tag: 6, GET) request complete; src=file://localhost/utils/data_IO.py
+2017-06-14 12:03:00,106-0400 INFO  GetFileHandler Handler(tag: 6, GET) reader: LR-Handler(tag: 6, GET)
+2017-06-14 12:03:00,106-0400 INFO  GetFileHandler Handler(tag: 6, GET) sending length: 3243, 1508930668
+2017-06-14 12:03:00,106-0400 INFO  ReadBuffer RB-LR-Handler(tag: 6, GET) will ask for 1 buffers for a size of 3243
+2017-06-14 12:03:00,106-0400 INFO  ReadBuffer RB-LR-Handler(tag: 6, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,106-0400 INFO  LocalIOProvider LR-Handler(tag: 6, GET) rbuf: RB-LR-Handler(tag: 6, GET)
+2017-06-14 12:03:00,107-0400 INFO  GetFileHandler Handler(tag: 6, GET) unregistering (last)
+2017-06-14 12:03:00,107-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,186-0400 INFO  GetFileHandler Handler(tag: 7, GET) request complete; src=file://localhost/utils/extract.py
+2017-06-14 12:03:00,187-0400 INFO  GetFileHandler Handler(tag: 7, GET) reader: LR-Handler(tag: 7, GET)
+2017-06-14 12:03:00,187-0400 INFO  GetFileHandler Handler(tag: 7, GET) sending length: 3983, 163698461
+2017-06-14 12:03:00,187-0400 INFO  ReadBuffer RB-LR-Handler(tag: 7, GET) will ask for 1 buffers for a size of 3983
+2017-06-14 12:03:00,187-0400 INFO  ReadBuffer RB-LR-Handler(tag: 7, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,187-0400 INFO  LocalIOProvider LR-Handler(tag: 7, GET) rbuf: RB-LR-Handler(tag: 7, GET)
+2017-06-14 12:03:00,187-0400 INFO  GetFileHandler Handler(tag: 7, GET) unregistering (last)
+2017-06-14 12:03:00,187-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,266-0400 INFO  GetFileHandler Handler(tag: 8, GET) request complete; src=file://localhost/utils/pvutils.py
+2017-06-14 12:03:00,266-0400 INFO  GetFileHandler Handler(tag: 8, GET) reader: LR-Handler(tag: 8, GET)
+2017-06-14 12:03:00,266-0400 INFO  GetFileHandler Handler(tag: 8, GET) sending length: 15224, 1337978409
+2017-06-14 12:03:00,266-0400 INFO  ReadBuffer RB-LR-Handler(tag: 8, GET) will ask for 1 buffers for a size of 15224
+2017-06-14 12:03:00,266-0400 INFO  ReadBuffer RB-LR-Handler(tag: 8, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,266-0400 INFO  LocalIOProvider LR-Handler(tag: 8, GET) rbuf: RB-LR-Handler(tag: 8, GET)
+2017-06-14 12:03:00,266-0400 INFO  GetFileHandler Handler(tag: 8, GET) unregistering (last)
+2017-06-14 12:03:00,266-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,346-0400 INFO  GetFileHandler Handler(tag: 9, GET) request complete; src=file://localhost/utils/pvutils.pyc
+2017-06-14 12:03:00,346-0400 INFO  GetFileHandler Handler(tag: 9, GET) reader: LR-Handler(tag: 9, GET)
+2017-06-14 12:03:00,346-0400 INFO  GetFileHandler Handler(tag: 9, GET) sending length: 15192, 2054625952
+2017-06-14 12:03:00,346-0400 INFO  ReadBuffer RB-LR-Handler(tag: 9, GET) will ask for 1 buffers for a size of 15192
+2017-06-14 12:03:00,346-0400 INFO  ReadBuffer RB-LR-Handler(tag: 9, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,346-0400 INFO  LocalIOProvider LR-Handler(tag: 9, GET) rbuf: RB-LR-Handler(tag: 9, GET)
+2017-06-14 12:03:00,346-0400 INFO  GetFileHandler Handler(tag: 9, GET) unregistering (last)
+2017-06-14 12:03:00,346-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,430-0400 INFO  GetFileHandler Handler(tag: 10, GET) request complete; src=file://localhost/utils/cleanup.sh
+2017-06-14 12:03:00,430-0400 INFO  GetFileHandler Handler(tag: 10, GET) reader: LR-Handler(tag: 10, GET)
+2017-06-14 12:03:00,430-0400 INFO  GetFileHandler Handler(tag: 10, GET) sending length: 36, 1791007938
+2017-06-14 12:03:00,430-0400 INFO  ReadBuffer RB-LR-Handler(tag: 10, GET) will ask for 1 buffers for a size of 36
+2017-06-14 12:03:00,430-0400 INFO  ReadBuffer RB-LR-Handler(tag: 10, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,430-0400 INFO  LocalIOProvider LR-Handler(tag: 10, GET) rbuf: RB-LR-Handler(tag: 10, GET)
+2017-06-14 12:03:00,430-0400 INFO  GetFileHandler Handler(tag: 10, GET) unregistering (last)
+2017-06-14 12:03:00,430-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,510-0400 INFO  GetFileHandler Handler(tag: 11, GET) request complete; src=file://localhost/utils/data_IO.pyc
+2017-06-14 12:03:00,510-0400 INFO  GetFileHandler Handler(tag: 11, GET) reader: LR-Handler(tag: 11, GET)
+2017-06-14 12:03:00,510-0400 INFO  GetFileHandler Handler(tag: 11, GET) sending length: 3693, 528972276
+2017-06-14 12:03:00,510-0400 INFO  ReadBuffer RB-LR-Handler(tag: 11, GET) will ask for 1 buffers for a size of 3693
+2017-06-14 12:03:00,510-0400 INFO  ReadBuffer RB-LR-Handler(tag: 11, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,510-0400 INFO  LocalIOProvider LR-Handler(tag: 11, GET) rbuf: RB-LR-Handler(tag: 11, GET)
+2017-06-14 12:03:00,510-0400 INFO  GetFileHandler Handler(tag: 11, GET) unregistering (last)
+2017-06-14 12:03:00,510-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,590-0400 INFO  GetFileHandler Handler(tag: 12, GET) request complete; src=file://localhost/utils/runOpenfoam.sh
+2017-06-14 12:03:00,590-0400 INFO  GetFileHandler Handler(tag: 12, GET) reader: LR-Handler(tag: 12, GET)
+2017-06-14 12:03:00,590-0400 INFO  GetFileHandler Handler(tag: 12, GET) sending length: 1477, 1545875234
+2017-06-14 12:03:00,590-0400 INFO  ReadBuffer RB-LR-Handler(tag: 12, GET) will ask for 1 buffers for a size of 1477
+2017-06-14 12:03:00,590-0400 INFO  ReadBuffer RB-LR-Handler(tag: 12, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,590-0400 INFO  LocalIOProvider LR-Handler(tag: 12, GET) rbuf: RB-LR-Handler(tag: 12, GET)
+2017-06-14 12:03:00,590-0400 INFO  GetFileHandler Handler(tag: 12, GET) unregistering (last)
+2017-06-14 12:03:00,595-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,670-0400 INFO  GetFileHandler Handler(tag: 13, GET) request complete; src=file://localhost/utils/plot.py
+2017-06-14 12:03:00,670-0400 INFO  GetFileHandler Handler(tag: 13, GET) reader: LR-Handler(tag: 13, GET)
+2017-06-14 12:03:00,670-0400 INFO  GetFileHandler Handler(tag: 13, GET) sending length: 618, 463198285
+2017-06-14 12:03:00,670-0400 INFO  ReadBuffer RB-LR-Handler(tag: 13, GET) will ask for 1 buffers for a size of 618
+2017-06-14 12:03:00,670-0400 INFO  ReadBuffer RB-LR-Handler(tag: 13, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,670-0400 INFO  LocalIOProvider LR-Handler(tag: 13, GET) rbuf: RB-LR-Handler(tag: 13, GET)
+2017-06-14 12:03:00,670-0400 INFO  GetFileHandler Handler(tag: 13, GET) unregistering (last)
+2017-06-14 12:03:00,670-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,709-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 91013936, JVMThreads: 34
+2017-06-14 12:03:00,709-0400 INFO  RuntimeStats$ProgressTicker   Stage in:1
+2017-06-14 12:03:00,754-0400 INFO  GetFileHandler Handler(tag: 14, GET) request complete; src=file://localhost//core/xinchen/swift-k/dist/swift-svn/libexec/_swiftwrap.staging
+2017-06-14 12:03:00,754-0400 INFO  GetFileHandler Handler(tag: 14, GET) reader: LR-Handler(tag: 14, GET)
+2017-06-14 12:03:00,754-0400 INFO  GetFileHandler Handler(tag: 14, GET) sending length: 15067, 806932014
+2017-06-14 12:03:00,754-0400 INFO  ReadBuffer RB-LR-Handler(tag: 14, GET) will ask for 1 buffers for a size of 15067
+2017-06-14 12:03:00,754-0400 INFO  ReadBuffer RB-LR-Handler(tag: 14, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,754-0400 INFO  LocalIOProvider LR-Handler(tag: 14, GET) rbuf: RB-LR-Handler(tag: 14, GET)
+2017-06-14 12:03:00,755-0400 INFO  GetFileHandler Handler(tag: 14, GET) unregistering (last)
+2017-06-14 12:03:00,755-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,854-0400 INFO  GetFileHandler Handler(tag: 15, GET) request complete; src=file://localhost/utils/prepInputs.sh
+2017-06-14 12:03:00,854-0400 INFO  GetFileHandler Handler(tag: 15, GET) reader: LR-Handler(tag: 15, GET)
+2017-06-14 12:03:00,854-0400 INFO  GetFileHandler Handler(tag: 15, GET) sending length: 52, 1887570643
+2017-06-14 12:03:00,854-0400 INFO  ReadBuffer RB-LR-Handler(tag: 15, GET) will ask for 1 buffers for a size of 52
+2017-06-14 12:03:00,854-0400 INFO  ReadBuffer RB-LR-Handler(tag: 15, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,854-0400 INFO  LocalIOProvider LR-Handler(tag: 15, GET) rbuf: RB-LR-Handler(tag: 15, GET)
+2017-06-14 12:03:00,854-0400 INFO  GetFileHandler Handler(tag: 15, GET) unregistering (last)
+2017-06-14 12:03:00,854-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:00,934-0400 INFO  GetFileHandler Handler(tag: 16, GET) request complete; src=file://localhost/utils/postSweep.sh
+2017-06-14 12:03:00,934-0400 INFO  GetFileHandler Handler(tag: 16, GET) reader: LR-Handler(tag: 16, GET)
+2017-06-14 12:03:00,934-0400 INFO  GetFileHandler Handler(tag: 16, GET) sending length: 694, 243391809
+2017-06-14 12:03:00,934-0400 INFO  ReadBuffer RB-LR-Handler(tag: 16, GET) will ask for 1 buffers for a size of 694
+2017-06-14 12:03:00,934-0400 INFO  ReadBuffer RB-LR-Handler(tag: 16, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:00,934-0400 INFO  LocalIOProvider LR-Handler(tag: 16, GET) rbuf: RB-LR-Handler(tag: 16, GET)
+2017-06-14 12:03:00,934-0400 INFO  GetFileHandler Handler(tag: 16, GET) unregistering (last)
+2017-06-14 12:03:00,934-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,014-0400 INFO  GetFileHandler Handler(tag: 17, GET) request complete; src=file://localhost/utils/snapshot.sh
+2017-06-14 12:03:01,014-0400 INFO  GetFileHandler Handler(tag: 17, GET) reader: LR-Handler(tag: 17, GET)
+2017-06-14 12:03:01,014-0400 INFO  GetFileHandler Handler(tag: 17, GET) sending length: 516, 742735070
+2017-06-14 12:03:01,014-0400 INFO  ReadBuffer RB-LR-Handler(tag: 17, GET) will ask for 1 buffers for a size of 516
+2017-06-14 12:03:01,014-0400 INFO  ReadBuffer RB-LR-Handler(tag: 17, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,014-0400 INFO  LocalIOProvider LR-Handler(tag: 17, GET) rbuf: RB-LR-Handler(tag: 17, GET)
+2017-06-14 12:03:01,014-0400 INFO  GetFileHandler Handler(tag: 17, GET) unregistering (last)
+2017-06-14 12:03:01,014-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,094-0400 INFO  GetFileHandler Handler(tag: 18, GET) request complete; src=file://localhost/utils/expandSweep.py
+2017-06-14 12:03:01,094-0400 INFO  GetFileHandler Handler(tag: 18, GET) reader: LR-Handler(tag: 18, GET)
+2017-06-14 12:03:01,094-0400 INFO  GetFileHandler Handler(tag: 18, GET) sending length: 1503, 613856906
+2017-06-14 12:03:01,094-0400 INFO  ReadBuffer RB-LR-Handler(tag: 18, GET) will ask for 1 buffers for a size of 1503
+2017-06-14 12:03:01,094-0400 INFO  ReadBuffer RB-LR-Handler(tag: 18, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,094-0400 INFO  LocalIOProvider LR-Handler(tag: 18, GET) rbuf: RB-LR-Handler(tag: 18, GET)
+2017-06-14 12:03:01,094-0400 INFO  GetFileHandler Handler(tag: 18, GET) unregistering (last)
+2017-06-14 12:03:01,094-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,178-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=2 workerid=local:000000
+2017-06-14 12:03:01,179-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=17
+2017-06-14 12:03:01,180-0400 INFO  PutFileHandler Handler(tag: 21, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0/_wrapper.error
+2017-06-14 12:03:01,180-0400 INFO  PutFileHandler Handler(tag: 21, PUT) destination: file://localhost/run004/openfoam-run004.d/expandSweep-6rmb3l9n-0.error
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 21, PUT) Transfer done
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 22, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0/_wrapper.log
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 22, PUT) destination: file://localhost/run004/openfoam-run004.d/expandSweep-6rmb3l9n-0.info
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 22, PUT) Transfer done
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 23, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0/_stdout.txt
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 23, PUT) destination: file://localhost/run004/openfoam-run004.d/expandSweep-6rmb3l9n-0.stdout
+2017-06-14 12:03:01,185-0400 INFO  PutFileHandler Handler(tag: 23, PUT) Transfer done
+2017-06-14 12:03:01,186-0400 INFO  PutFileHandler Handler(tag: 24, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0/cases.list
+2017-06-14 12:03:01,186-0400 INFO  PutFileHandler Handler(tag: 24, PUT) destination: file://localhost/cases.list
+2017-06-14 12:03:01,186-0400 INFO  PutFileHandler Handler(tag: 25, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/e/expandSweep-6rmb3l9n-0/_stderr.txt
+2017-06-14 12:03:01,186-0400 INFO  PutFileHandler Handler(tag: 25, PUT) destination: file://localhost/run004/openfoam-run004.d/expandSweep-6rmb3l9n-0.stderr
+2017-06-14 12:03:01,186-0400 INFO  PutFileHandler Handler(tag: 24, PUT) Transfer done
+2017-06-14 12:03:01,186-0400 INFO  PutFileHandler Handler(tag: 25, PUT) Transfer done
+2017-06-14 12:03:01,278-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:01,278-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-11 status=7
+2017-06-14 12:03:01,279-0400 DEBUG swift JOB_END jobid=expandSweep-6rmb3l9n-0
+2017-06-14 12:03:01,279-0400 INFO  swift END_SUCCESS jobid=expandSweep-6rmb3l9n tr=expandSweep
+2017-06-14 12:03:01,279-0400 DEBUG swift PROCEDURE_END line=22 thread=2-0-11-8 name=expandSweep
+2017-06-14 12:03:01,280-0400 DEBUG swift INTERNALPROC_END thread=2-0-12-9 name=readData
+2017-06-14 12:03:01,280-0400 DEBUG swift FOREACH_IT_START line=46 thread=2-0-14-11-16-0
+2017-06-14 12:03:01,280-0400 DEBUG swift SCOPE thread=2-0-14-11-16-0
+2017-06-14 12:03:01,281-0400 DEBUG swift FOREACH_IT_START line=46 thread=2-0-14-11-17-1
+2017-06-14 12:03:01,281-0400 DEBUG swift SCOPE thread=2-0-14-11-17-1
+2017-06-14 12:03:01,281-0400 DEBUG swift FOREACH_IT_START line=46 thread=2-0-14-11-18-2
+2017-06-14 12:03:01,281-0400 DEBUG swift SCOPE thread=2-0-14-11-18-2
+2017-06-14 12:03:01,281-0400 DEBUG swift FOREACH_IT_START line=46 thread=2-0-14-11-19-3
+2017-06-14 12:03:01,281-0400 DEBUG swift SCOPE thread=2-0-14-11-19-3
+2017-06-14 12:03:01,282-0400 DEBUG swift PROCEDURE line=26 thread=2-0-14-11-16-0-24-4 name=runOpenfoam
+2017-06-14 12:03:01,283-0400 DEBUG swift PROCEDURE line=26 thread=2-0-14-11-17-1-31-4 name=runOpenfoam
+2017-06-14 12:03:01,283-0400 DEBUG swift JOB_INIT jobid=runOpenfoam-8rmb3l9n tr=runOpenfoam
+2017-06-14 12:03:01,283-0400 DEBUG swift JOB_INIT jobid=runOpenfoam-7rmb3l9n tr=runOpenfoam
+2017-06-14 12:03:01,283-0400 DEBUG swift PROCEDURE line=26 thread=2-0-14-11-18-2-38-4 name=runOpenfoam
+2017-06-14 12:03:01,283-0400 DEBUG swift JOB_SITE_SELECT jobid=runOpenfoam-7rmb3l9n-0
+2017-06-14 12:03:01,283-0400 DEBUG swift JOB_SITE_SELECT jobid=runOpenfoam-8rmb3l9n-0
+2017-06-14 12:03:01,283-0400 DEBUG swift PROCEDURE line=26 thread=2-0-14-11-19-3-45-4 name=runOpenfoam
+2017-06-14 12:03:01,283-0400 DEBUG swift JOB_INIT jobid=runOpenfoam-9rmb3l9n tr=runOpenfoam
+2017-06-14 12:03:01,284-0400 DEBUG swift JOB_INIT jobid=runOpenfoam-armb3l9n tr=runOpenfoam
+2017-06-14 12:03:01,284-0400 DEBUG swift JOB_SITE_SELECT jobid=runOpenfoam-armb3l9n-0
+2017-06-14 12:03:01,284-0400 DEBUG swift JOB_SITE_SELECT jobid=runOpenfoam-9rmb3l9n-0
+2017-06-14 12:03:01,284-0400 INFO  Tracef 
+4 Cases in Simulation
+
+
+2017-06-14 12:03:01,284-0400 DEBUG swift THREAD_ASSOCIATION jobid=runOpenfoam-8rmb3l9n-0 host=linuxpool thread=2-0-14-11-16-0-24-4
+2017-06-14 12:03:01,284-0400 DEBUG swift THREAD_ASSOCIATION jobid=runOpenfoam-7rmb3l9n-0 host=linuxpool thread=2-0-14-11-17-1-31-4
+2017-06-14 12:03:01,284-0400 DEBUG swift INTERNALPROC_END thread=2-0-13-10 name=tracef
+2017-06-14 12:03:01,284-0400 DEBUG swift THREAD_ASSOCIATION jobid=runOpenfoam-armb3l9n-0 host=linuxpool thread=2-0-14-11-18-2-38-4
+2017-06-14 12:03:01,284-0400 DEBUG swift JOB_START jobid=runOpenfoam-armb3l9n-0 tr=runOpenfoambash utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,7 output/tgz/2.tgz output/png/inlet5_X,5,inlet6_Y,7.png sample_inputs/elbowKPI.json tmpdir=openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0
+2017-06-14 12:03:01,284-0400 DEBUG swift JOB_START jobid=runOpenfoam-8rmb3l9n-0 tr=runOpenfoambash utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,5 output/tgz/0.tgz output/png/inlet5_X,5,inlet6_Y,5.png sample_inputs/elbowKPI.json tmpdir=openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0
+2017-06-14 12:03:01,284-0400 DEBUG swift JOB_START jobid=runOpenfoam-7rmb3l9n-0 tr=runOpenfoambash utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,6 output/tgz/1.tgz output/png/inlet5_X,5,inlet6_Y,6.png sample_inputs/elbowKPI.json tmpdir=openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0
+2017-06-14 12:03:01,285-0400 DEBUG swift THREAD_ASSOCIATION jobid=runOpenfoam-9rmb3l9n-0 host=linuxpool thread=2-0-14-11-19-3-45-4
+2017-06-14 12:03:01,285-0400 INFO  Execute JOB_TASK jobid=runOpenfoam-8rmb3l9n-0 taskid=task-24 exec=/bin/bash dir=openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0 args=_swiftwrap.staging -d output/tgz|output/log/err|output/png|sample_inputs|utils|output/log/out -if utils/extract.py|utils/expandSweep.py|utils/snapshot.sh|utils/cleanup.sh|utils/prepInputs.sh|utils/pvutils.py|utils/extract.sh|sample_inputs/elbowKPI.json|utils/plot.py|utils/pvutils.pyc|utils/runOpenfoam.sh|sample_inputs/elbow.tgz|utils/data_IO.pyc|utils/data_IO.py|sample_inputs/elbow.pvsm|utils/postSweep.sh -of output/tgz/0.tgz|output/log/err/0.txt|output/log/out/0.txt|output/png/inlet5_X,5,inlet6_Y,5.png -cf  -cdmfile  -status provider -e bash -out output/log/out/0.txt -err output/log/err/0.txt -i -a utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,5 output/tgz/0.tgz output/png/inlet5_X,5,inlet6_Y,5.png sample_inputs/elbowKPI.json
+2017-06-14 12:03:01,285-0400 INFO  Execute JOB_TASK jobid=runOpenfoam-armb3l9n-0 taskid=task-38 exec=/bin/bash dir=openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0 args=_swiftwrap.staging -d output/tgz|output/log/err|output/png|sample_inputs|utils|output/log/out -if utils/extract.py|utils/expandSweep.py|utils/snapshot.sh|utils/cleanup.sh|utils/prepInputs.sh|utils/pvutils.py|utils/extract.sh|sample_inputs/elbowKPI.json|utils/plot.py|utils/pvutils.pyc|utils/runOpenfoam.sh|sample_inputs/elbow.tgz|utils/data_IO.pyc|utils/data_IO.py|sample_inputs/elbow.pvsm|utils/postSweep.sh -of output/log/err/2.txt|output/tgz/2.tgz|output/log/out/2.txt|output/png/inlet5_X,5,inlet6_Y,7.png -cf  -cdmfile  -status provider -e bash -out output/log/out/2.txt -err output/log/err/2.txt -i -a utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,7 output/tgz/2.tgz output/png/inlet5_X,5,inlet6_Y,7.png sample_inputs/elbowKPI.json
+2017-06-14 12:03:01,285-0400 DEBUG swift JOB_START jobid=runOpenfoam-9rmb3l9n-0 tr=runOpenfoambash utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,8 output/tgz/3.tgz output/png/inlet5_X,5,inlet6_Y,8.png sample_inputs/elbowKPI.json tmpdir=openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0
+2017-06-14 12:03:01,285-0400 INFO  Execute JOB_TASK jobid=runOpenfoam-7rmb3l9n-0 taskid=task-31 exec=/bin/bash dir=openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0 args=_swiftwrap.staging -d output/tgz|output/log/err|output/png|sample_inputs|utils|output/log/out -if utils/extract.py|utils/expandSweep.py|utils/snapshot.sh|utils/cleanup.sh|utils/prepInputs.sh|utils/pvutils.py|utils/extract.sh|sample_inputs/elbowKPI.json|utils/plot.py|utils/pvutils.pyc|utils/runOpenfoam.sh|sample_inputs/elbow.tgz|utils/data_IO.pyc|utils/data_IO.py|sample_inputs/elbow.pvsm|utils/postSweep.sh -of output/log/err/1.txt|output/tgz/1.tgz|output/log/out/1.txt|output/png/inlet5_X,5,inlet6_Y,6.png -cf  -cdmfile  -status provider -e bash -out output/log/out/1.txt -err output/log/err/1.txt -i -a utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,6 output/tgz/1.tgz output/png/inlet5_X,5,inlet6_Y,6.png sample_inputs/elbowKPI.json
+2017-06-14 12:03:01,286-0400 INFO  Execute JOB_TASK jobid=runOpenfoam-9rmb3l9n-0 taskid=task-45 exec=/bin/bash dir=openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0 args=_swiftwrap.staging -d output/tgz|output/log/err|output/png|sample_inputs|utils|output/log/out -if utils/extract.py|utils/expandSweep.py|utils/snapshot.sh|utils/cleanup.sh|utils/prepInputs.sh|utils/pvutils.py|utils/extract.sh|sample_inputs/elbowKPI.json|utils/plot.py|utils/pvutils.pyc|utils/runOpenfoam.sh|sample_inputs/elbow.tgz|utils/data_IO.pyc|utils/data_IO.py|sample_inputs/elbow.pvsm|utils/postSweep.sh -of output/log/out/3.txt|output/tgz/3.tgz|output/png/inlet5_X,5,inlet6_Y,8.png|output/log/err/3.txt -cf  -cdmfile  -status provider -e bash -out output/log/out/3.txt -err output/log/err/3.txt -i -a utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5,inlet6_Y,8 output/tgz/3.tgz output/png/inlet5_X,5,inlet6_Y,8.png sample_inputs/elbowKPI.json
+2017-06-14 12:03:01,286-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-38 status=8
+2017-06-14 12:03:01,287-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-31 status=8
+2017-06-14 12:03:01,288-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-24 status=8
+2017-06-14 12:03:01,289-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-45 status=8
+2017-06-14 12:03:01,362-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-38 status=1
+2017-06-14 12:03:01,362-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-31 status=1
+2017-06-14 12:03:01,362-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-24 status=1
+2017-06-14 12:03:01,362-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-45 status=1
+2017-06-14 12:03:01,364-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-38 status=16 workerid=local:000000
+2017-06-14 12:03:01,364-0400 INFO  GetFileHandler Handler(tag: 31, GET) request complete; src=file://localhost/utils/extract.sh
+2017-06-14 12:03:01,364-0400 INFO  GetFileHandler Handler(tag: 31, GET) reader: LR-Handler(tag: 31, GET)
+2017-06-14 12:03:01,364-0400 INFO  GetFileHandler Handler(tag: 31, GET) sending length: 950, 2103342892
+2017-06-14 12:03:01,364-0400 INFO  ReadBuffer RB-LR-Handler(tag: 31, GET) will ask for 1 buffers for a size of 950
+2017-06-14 12:03:01,364-0400 INFO  ReadBuffer RB-LR-Handler(tag: 31, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,364-0400 INFO  LocalIOProvider LR-Handler(tag: 31, GET) rbuf: RB-LR-Handler(tag: 31, GET)
+2017-06-14 12:03:01,364-0400 INFO  GetFileHandler Handler(tag: 31, GET) unregistering (last)
+2017-06-14 12:03:01,365-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,365-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-31 status=16 workerid=local:000000
+2017-06-14 12:03:01,365-0400 INFO  GetFileHandler Handler(tag: 34, GET) request complete; src=file://localhost/utils/extract.sh
+2017-06-14 12:03:01,365-0400 INFO  GetFileHandler Handler(tag: 34, GET) reader: LR-Handler(tag: 34, GET)
+2017-06-14 12:03:01,365-0400 INFO  GetFileHandler Handler(tag: 34, GET) sending length: 950, 862479382
+2017-06-14 12:03:01,365-0400 INFO  ReadBuffer RB-LR-Handler(tag: 34, GET) will ask for 1 buffers for a size of 950
+2017-06-14 12:03:01,365-0400 INFO  ReadBuffer RB-LR-Handler(tag: 34, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,365-0400 INFO  LocalIOProvider LR-Handler(tag: 34, GET) rbuf: RB-LR-Handler(tag: 34, GET)
+2017-06-14 12:03:01,365-0400 INFO  GetFileHandler Handler(tag: 34, GET) unregistering (last)
+2017-06-14 12:03:01,365-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,446-0400 INFO  GetFileHandler Handler(tag: 35, GET) request complete; src=file://localhost/utils/data_IO.py
+2017-06-14 12:03:01,446-0400 INFO  GetFileHandler Handler(tag: 35, GET) reader: LR-Handler(tag: 35, GET)
+2017-06-14 12:03:01,446-0400 INFO  GetFileHandler Handler(tag: 35, GET) sending length: 3243, 795627600
+2017-06-14 12:03:01,446-0400 INFO  ReadBuffer RB-LR-Handler(tag: 35, GET) will ask for 1 buffers for a size of 3243
+2017-06-14 12:03:01,446-0400 INFO  ReadBuffer RB-LR-Handler(tag: 35, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,446-0400 INFO  LocalIOProvider LR-Handler(tag: 35, GET) rbuf: RB-LR-Handler(tag: 35, GET)
+2017-06-14 12:03:01,446-0400 INFO  GetFileHandler Handler(tag: 36, GET) request complete; src=file://localhost/utils/data_IO.py
+2017-06-14 12:03:01,446-0400 INFO  GetFileHandler Handler(tag: 36, GET) reader: LR-Handler(tag: 36, GET)
+2017-06-14 12:03:01,446-0400 INFO  GetFileHandler Handler(tag: 36, GET) sending length: 3243, 1757921932
+2017-06-14 12:03:01,446-0400 INFO  ReadBuffer RB-LR-Handler(tag: 36, GET) will ask for 1 buffers for a size of 3243
+2017-06-14 12:03:01,447-0400 INFO  ReadBuffer RB-LR-Handler(tag: 36, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,447-0400 INFO  LocalIOProvider LR-Handler(tag: 36, GET) rbuf: RB-LR-Handler(tag: 36, GET)
+2017-06-14 12:03:01,447-0400 INFO  GetFileHandler Handler(tag: 35, GET) unregistering (last)
+2017-06-14 12:03:01,447-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,447-0400 INFO  GetFileHandler Handler(tag: 36, GET) unregistering (last)
+2017-06-14 12:03:01,447-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,530-0400 INFO  GetFileHandler Handler(tag: 37, GET) request complete; src=file://localhost/sample_inputs/elbowKPI.json
+2017-06-14 12:03:01,530-0400 INFO  GetFileHandler Handler(tag: 37, GET) reader: LR-Handler(tag: 37, GET)
+2017-06-14 12:03:01,530-0400 INFO  GetFileHandler Handler(tag: 37, GET) sending length: 878, 701441598
+2017-06-14 12:03:01,530-0400 INFO  ReadBuffer RB-LR-Handler(tag: 37, GET) will ask for 1 buffers for a size of 878
+2017-06-14 12:03:01,530-0400 INFO  ReadBuffer RB-LR-Handler(tag: 37, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,530-0400 INFO  LocalIOProvider LR-Handler(tag: 37, GET) rbuf: RB-LR-Handler(tag: 37, GET)
+2017-06-14 12:03:01,530-0400 INFO  GetFileHandler Handler(tag: 37, GET) unregistering (last)
+2017-06-14 12:03:01,530-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,531-0400 INFO  GetFileHandler Handler(tag: 38, GET) request complete; src=file://localhost/sample_inputs/elbowKPI.json
+2017-06-14 12:03:01,531-0400 INFO  GetFileHandler Handler(tag: 38, GET) reader: LR-Handler(tag: 38, GET)
+2017-06-14 12:03:01,531-0400 INFO  GetFileHandler Handler(tag: 38, GET) sending length: 878, 490539994
+2017-06-14 12:03:01,531-0400 INFO  ReadBuffer RB-LR-Handler(tag: 38, GET) will ask for 1 buffers for a size of 878
+2017-06-14 12:03:01,531-0400 INFO  ReadBuffer RB-LR-Handler(tag: 38, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,531-0400 INFO  LocalIOProvider LR-Handler(tag: 38, GET) rbuf: RB-LR-Handler(tag: 38, GET)
+2017-06-14 12:03:01,531-0400 INFO  GetFileHandler Handler(tag: 38, GET) unregistering (last)
+2017-06-14 12:03:01,531-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,610-0400 INFO  GetFileHandler Handler(tag: 39, GET) request complete; src=file://localhost/sample_inputs/elbow.tgz
+2017-06-14 12:03:01,610-0400 INFO  GetFileHandler Handler(tag: 39, GET) reader: LR-Handler(tag: 39, GET)
+2017-06-14 12:03:01,610-0400 INFO  GetFileHandler Handler(tag: 39, GET) sending length: 17104, 1239081604
+2017-06-14 12:03:01,610-0400 INFO  ReadBuffer RB-LR-Handler(tag: 39, GET) will ask for 1 buffers for a size of 17104
+2017-06-14 12:03:01,610-0400 INFO  ReadBuffer RB-LR-Handler(tag: 39, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,610-0400 INFO  LocalIOProvider LR-Handler(tag: 39, GET) rbuf: RB-LR-Handler(tag: 39, GET)
+2017-06-14 12:03:01,610-0400 INFO  GetFileHandler Handler(tag: 39, GET) unregistering (last)
+2017-06-14 12:03:01,611-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,611-0400 INFO  GetFileHandler Handler(tag: 40, GET) request complete; src=file://localhost/sample_inputs/elbow.tgz
+2017-06-14 12:03:01,611-0400 INFO  GetFileHandler Handler(tag: 40, GET) reader: LR-Handler(tag: 40, GET)
+2017-06-14 12:03:01,611-0400 INFO  GetFileHandler Handler(tag: 40, GET) sending length: 17104, 887096568
+2017-06-14 12:03:01,611-0400 INFO  ReadBuffer RB-LR-Handler(tag: 40, GET) will ask for 1 buffers for a size of 17104
+2017-06-14 12:03:01,611-0400 INFO  ReadBuffer RB-LR-Handler(tag: 40, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,611-0400 INFO  LocalIOProvider LR-Handler(tag: 40, GET) rbuf: RB-LR-Handler(tag: 40, GET)
+2017-06-14 12:03:01,611-0400 INFO  GetFileHandler Handler(tag: 40, GET) unregistering (last)
+2017-06-14 12:03:01,611-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,690-0400 INFO  GetFileHandler Handler(tag: 41, GET) request complete; src=file://localhost/utils/extract.py
+2017-06-14 12:03:01,690-0400 INFO  GetFileHandler Handler(tag: 41, GET) reader: LR-Handler(tag: 41, GET)
+2017-06-14 12:03:01,690-0400 INFO  GetFileHandler Handler(tag: 41, GET) sending length: 3983, 355596501
+2017-06-14 12:03:01,690-0400 INFO  ReadBuffer RB-LR-Handler(tag: 41, GET) will ask for 1 buffers for a size of 3983
+2017-06-14 12:03:01,690-0400 INFO  ReadBuffer RB-LR-Handler(tag: 41, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,690-0400 INFO  LocalIOProvider LR-Handler(tag: 41, GET) rbuf: RB-LR-Handler(tag: 41, GET)
+2017-06-14 12:03:01,690-0400 INFO  GetFileHandler Handler(tag: 41, GET) unregistering (last)
+2017-06-14 12:03:01,690-0400 INFO  GetFileHandler Handler(tag: 42, GET) request complete; src=file://localhost/utils/extract.py
+2017-06-14 12:03:01,690-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,690-0400 INFO  GetFileHandler Handler(tag: 42, GET) reader: LR-Handler(tag: 42, GET)
+2017-06-14 12:03:01,691-0400 INFO  GetFileHandler Handler(tag: 42, GET) sending length: 3983, 1441184038
+2017-06-14 12:03:01,691-0400 INFO  ReadBuffer RB-LR-Handler(tag: 42, GET) will ask for 1 buffers for a size of 3983
+2017-06-14 12:03:01,691-0400 INFO  ReadBuffer RB-LR-Handler(tag: 42, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,691-0400 INFO  LocalIOProvider LR-Handler(tag: 42, GET) rbuf: RB-LR-Handler(tag: 42, GET)
+2017-06-14 12:03:01,691-0400 INFO  GetFileHandler Handler(tag: 42, GET) unregistering (last)
+2017-06-14 12:03:01,691-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,709-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 39675840, JVMThreads: 38
+2017-06-14 12:03:01,709-0400 INFO  RuntimeStats$ProgressTicker   Stage in:2  Submitted:2  Finished successfully:1
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 43, GET) request complete; src=file://localhost/utils/pvutils.py
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 43, GET) reader: LR-Handler(tag: 43, GET)
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 43, GET) sending length: 15224, 1270996424
+2017-06-14 12:03:01,774-0400 INFO  ReadBuffer RB-LR-Handler(tag: 43, GET) will ask for 1 buffers for a size of 15224
+2017-06-14 12:03:01,774-0400 INFO  ReadBuffer RB-LR-Handler(tag: 43, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,774-0400 INFO  LocalIOProvider LR-Handler(tag: 43, GET) rbuf: RB-LR-Handler(tag: 43, GET)
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 43, GET) unregistering (last)
+2017-06-14 12:03:01,774-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 44, GET) request complete; src=file://localhost/utils/pvutils.py
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 44, GET) reader: LR-Handler(tag: 44, GET)
+2017-06-14 12:03:01,774-0400 INFO  GetFileHandler Handler(tag: 44, GET) sending length: 15224, 1734750260
+2017-06-14 12:03:01,775-0400 INFO  ReadBuffer RB-LR-Handler(tag: 44, GET) will ask for 1 buffers for a size of 15224
+2017-06-14 12:03:01,775-0400 INFO  ReadBuffer RB-LR-Handler(tag: 44, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,775-0400 INFO  LocalIOProvider LR-Handler(tag: 44, GET) rbuf: RB-LR-Handler(tag: 44, GET)
+2017-06-14 12:03:01,775-0400 INFO  GetFileHandler Handler(tag: 44, GET) unregistering (last)
+2017-06-14 12:03:01,775-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,854-0400 INFO  GetFileHandler Handler(tag: 45, GET) request complete; src=file://localhost/utils/pvutils.pyc
+2017-06-14 12:03:01,854-0400 INFO  GetFileHandler Handler(tag: 45, GET) reader: LR-Handler(tag: 45, GET)
+2017-06-14 12:03:01,854-0400 INFO  GetFileHandler Handler(tag: 45, GET) sending length: 15192, 277945194
+2017-06-14 12:03:01,854-0400 INFO  ReadBuffer RB-LR-Handler(tag: 45, GET) will ask for 1 buffers for a size of 15192
+2017-06-14 12:03:01,854-0400 INFO  ReadBuffer RB-LR-Handler(tag: 45, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,854-0400 INFO  LocalIOProvider LR-Handler(tag: 45, GET) rbuf: RB-LR-Handler(tag: 45, GET)
+2017-06-14 12:03:01,854-0400 INFO  GetFileHandler Handler(tag: 45, GET) unregistering (last)
+2017-06-14 12:03:01,854-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,854-0400 INFO  GetFileHandler Handler(tag: 46, GET) request complete; src=file://localhost/utils/pvutils.pyc
+2017-06-14 12:03:01,855-0400 INFO  GetFileHandler Handler(tag: 46, GET) reader: LR-Handler(tag: 46, GET)
+2017-06-14 12:03:01,855-0400 INFO  GetFileHandler Handler(tag: 46, GET) sending length: 15192, 233937324
+2017-06-14 12:03:01,855-0400 INFO  ReadBuffer RB-LR-Handler(tag: 46, GET) will ask for 1 buffers for a size of 15192
+2017-06-14 12:03:01,855-0400 INFO  ReadBuffer RB-LR-Handler(tag: 46, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,855-0400 INFO  LocalIOProvider LR-Handler(tag: 46, GET) rbuf: RB-LR-Handler(tag: 46, GET)
+2017-06-14 12:03:01,855-0400 INFO  GetFileHandler Handler(tag: 46, GET) unregistering (last)
+2017-06-14 12:03:01,855-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 47, GET) request complete; src=file://localhost/utils/cleanup.sh
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 47, GET) reader: LR-Handler(tag: 47, GET)
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 47, GET) sending length: 36, 491572643
+2017-06-14 12:03:01,934-0400 INFO  ReadBuffer RB-LR-Handler(tag: 47, GET) will ask for 1 buffers for a size of 36
+2017-06-14 12:03:01,934-0400 INFO  ReadBuffer RB-LR-Handler(tag: 47, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,934-0400 INFO  LocalIOProvider LR-Handler(tag: 47, GET) rbuf: RB-LR-Handler(tag: 47, GET)
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 47, GET) unregistering (last)
+2017-06-14 12:03:01,934-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 48, GET) request complete; src=file://localhost/utils/cleanup.sh
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 48, GET) reader: LR-Handler(tag: 48, GET)
+2017-06-14 12:03:01,934-0400 INFO  GetFileHandler Handler(tag: 48, GET) sending length: 36, 1086754293
+2017-06-14 12:03:01,935-0400 INFO  ReadBuffer RB-LR-Handler(tag: 48, GET) will ask for 1 buffers for a size of 36
+2017-06-14 12:03:01,935-0400 INFO  GetFileHandler Handler(tag: 48, GET) unregistering (last)
+2017-06-14 12:03:01,935-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:01,935-0400 INFO  LocalIOProvider LR-Handler(tag: -1, GET) rbuf: RB-LR-Handler(tag: -1, GET)
+2017-06-14 12:03:01,935-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 49, GET) request complete; src=file://localhost/utils/data_IO.pyc
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 49, GET) reader: LR-Handler(tag: 49, GET)
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 49, GET) sending length: 3693, 1217420423
+2017-06-14 12:03:02,018-0400 INFO  ReadBuffer RB-LR-Handler(tag: 49, GET) will ask for 1 buffers for a size of 3693
+2017-06-14 12:03:02,018-0400 INFO  ReadBuffer RB-LR-Handler(tag: 49, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,018-0400 INFO  LocalIOProvider LR-Handler(tag: 49, GET) rbuf: RB-LR-Handler(tag: 49, GET)
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 49, GET) unregistering (last)
+2017-06-14 12:03:02,018-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 50, GET) request complete; src=file://localhost/utils/data_IO.pyc
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 50, GET) reader: LR-Handler(tag: 50, GET)
+2017-06-14 12:03:02,018-0400 INFO  GetFileHandler Handler(tag: 50, GET) sending length: 3693, 657032348
+2017-06-14 12:03:02,018-0400 INFO  ReadBuffer RB-LR-Handler(tag: 50, GET) will ask for 1 buffers for a size of 3693
+2017-06-14 12:03:02,018-0400 INFO  ReadBuffer RB-LR-Handler(tag: 50, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,018-0400 INFO  LocalIOProvider LR-Handler(tag: 50, GET) rbuf: RB-LR-Handler(tag: 50, GET)
+2017-06-14 12:03:02,019-0400 INFO  GetFileHandler Handler(tag: 50, GET) unregistering (last)
+2017-06-14 12:03:02,019-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,098-0400 INFO  GetFileHandler Handler(tag: 51, GET) request complete; src=file://localhost/sample_inputs/elbow.pvsm
+2017-06-14 12:03:02,098-0400 INFO  GetFileHandler Handler(tag: 51, GET) reader: LR-Handler(tag: 51, GET)
+2017-06-14 12:03:02,098-0400 INFO  GetFileHandler Handler(tag: 51, GET) sending length: 96217, 198133970
+2017-06-14 12:03:02,098-0400 INFO  ReadBuffer RB-LR-Handler(tag: 51, GET) will ask for 2 buffers for a size of 96217
+2017-06-14 12:03:02,098-0400 INFO  ReadBuffer RB-LR-Handler(tag: 51, GET) actual allocated buffers 2(0 queued)
+2017-06-14 12:03:02,098-0400 INFO  LocalIOProvider LR-Handler(tag: 51, GET) rbuf: RB-LR-Handler(tag: 51, GET)
+2017-06-14 12:03:02,099-0400 INFO  GetFileHandler Handler(tag: 52, GET) request complete; src=file://localhost/sample_inputs/elbow.pvsm
+2017-06-14 12:03:02,099-0400 INFO  GetFileHandler Handler(tag: 51, GET) unregistering (last)
+2017-06-14 12:03:02,099-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 2 buffers
+2017-06-14 12:03:02,099-0400 INFO  GetFileHandler Handler(tag: 52, GET) reader: LR-Handler(tag: 52, GET)
+2017-06-14 12:03:02,099-0400 INFO  GetFileHandler Handler(tag: 52, GET) sending length: 96217, 331303016
+2017-06-14 12:03:02,099-0400 INFO  ReadBuffer RB-LR-Handler(tag: 52, GET) will ask for 2 buffers for a size of 96217
+2017-06-14 12:03:02,099-0400 INFO  ReadBuffer RB-LR-Handler(tag: 52, GET) actual allocated buffers 2(0 queued)
+2017-06-14 12:03:02,099-0400 INFO  LocalIOProvider LR-Handler(tag: 52, GET) rbuf: RB-LR-Handler(tag: 52, GET)
+2017-06-14 12:03:02,099-0400 INFO  GetFileHandler Handler(tag: 52, GET) unregistering (last)
+2017-06-14 12:03:02,099-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 2 buffers
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 53, GET) request complete; src=file://localhost/utils/runOpenfoam.sh
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 53, GET) reader: LR-Handler(tag: 53, GET)
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 53, GET) sending length: 1477, 704469298
+2017-06-14 12:03:02,138-0400 INFO  ReadBuffer RB-LR-Handler(tag: 53, GET) will ask for 1 buffers for a size of 1477
+2017-06-14 12:03:02,138-0400 INFO  ReadBuffer RB-LR-Handler(tag: 53, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,138-0400 INFO  LocalIOProvider LR-Handler(tag: 53, GET) rbuf: RB-LR-Handler(tag: 53, GET)
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 53, GET) unregistering (last)
+2017-06-14 12:03:02,138-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 54, GET) request complete; src=file://localhost/utils/runOpenfoam.sh
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 54, GET) reader: LR-Handler(tag: 54, GET)
+2017-06-14 12:03:02,138-0400 INFO  GetFileHandler Handler(tag: 54, GET) sending length: 1477, 1903484956
+2017-06-14 12:03:02,138-0400 INFO  ReadBuffer RB-LR-Handler(tag: 54, GET) will ask for 1 buffers for a size of 1477
+2017-06-14 12:03:02,138-0400 INFO  ReadBuffer RB-LR-Handler(tag: 54, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,138-0400 INFO  LocalIOProvider LR-Handler(tag: 54, GET) rbuf: RB-LR-Handler(tag: 54, GET)
+2017-06-14 12:03:02,139-0400 INFO  GetFileHandler Handler(tag: 54, GET) unregistering (last)
+2017-06-14 12:03:02,139-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 55, GET) request complete; src=file://localhost/utils/plot.py
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 55, GET) reader: LR-Handler(tag: 55, GET)
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 55, GET) sending length: 618, 1114590209
+2017-06-14 12:03:02,222-0400 INFO  ReadBuffer RB-LR-Handler(tag: 55, GET) will ask for 1 buffers for a size of 618
+2017-06-14 12:03:02,222-0400 INFO  ReadBuffer RB-LR-Handler(tag: 55, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,222-0400 INFO  LocalIOProvider LR-Handler(tag: 55, GET) rbuf: RB-LR-Handler(tag: 55, GET)
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 55, GET) unregistering (last)
+2017-06-14 12:03:02,222-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 56, GET) request complete; src=file://localhost/utils/plot.py
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 56, GET) reader: LR-Handler(tag: 56, GET)
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 56, GET) sending length: 618, 67631091
+2017-06-14 12:03:02,222-0400 INFO  ReadBuffer RB-LR-Handler(tag: 56, GET) will ask for 1 buffers for a size of 618
+2017-06-14 12:03:02,222-0400 INFO  ReadBuffer RB-LR-Handler(tag: 56, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,222-0400 INFO  LocalIOProvider LR-Handler(tag: 56, GET) rbuf: RB-LR-Handler(tag: 56, GET)
+2017-06-14 12:03:02,222-0400 INFO  GetFileHandler Handler(tag: 56, GET) unregistering (last)
+2017-06-14 12:03:02,222-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,302-0400 INFO  GetFileHandler Handler(tag: 57, GET) request complete; src=file://localhost//core/xinchen/swift-k/dist/swift-svn/libexec/_swiftwrap.staging
+2017-06-14 12:03:02,302-0400 INFO  GetFileHandler Handler(tag: 57, GET) reader: LR-Handler(tag: 57, GET)
+2017-06-14 12:03:02,302-0400 INFO  GetFileHandler Handler(tag: 57, GET) sending length: 15067, 2028129164
+2017-06-14 12:03:02,302-0400 INFO  ReadBuffer RB-LR-Handler(tag: 57, GET) will ask for 1 buffers for a size of 15067
+2017-06-14 12:03:02,302-0400 INFO  ReadBuffer RB-LR-Handler(tag: 57, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,302-0400 INFO  LocalIOProvider LR-Handler(tag: 57, GET) rbuf: RB-LR-Handler(tag: 57, GET)
+2017-06-14 12:03:02,302-0400 INFO  GetFileHandler Handler(tag: 57, GET) unregistering (last)
+2017-06-14 12:03:02,302-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,303-0400 INFO  GetFileHandler Handler(tag: 58, GET) request complete; src=file://localhost//core/xinchen/swift-k/dist/swift-svn/libexec/_swiftwrap.staging
+2017-06-14 12:03:02,303-0400 INFO  GetFileHandler Handler(tag: 58, GET) reader: LR-Handler(tag: 58, GET)
+2017-06-14 12:03:02,303-0400 INFO  GetFileHandler Handler(tag: 58, GET) sending length: 15067, 1031252520
+2017-06-14 12:03:02,303-0400 INFO  ReadBuffer RB-LR-Handler(tag: 58, GET) will ask for 1 buffers for a size of 15067
+2017-06-14 12:03:02,303-0400 INFO  ReadBuffer RB-LR-Handler(tag: 58, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,303-0400 INFO  LocalIOProvider LR-Handler(tag: 58, GET) rbuf: RB-LR-Handler(tag: 58, GET)
+2017-06-14 12:03:02,303-0400 INFO  GetFileHandler Handler(tag: 58, GET) unregistering (last)
+2017-06-14 12:03:02,303-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 59, GET) request complete; src=file://localhost/utils/prepInputs.sh
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 59, GET) reader: LR-Handler(tag: 59, GET)
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 59, GET) sending length: 52, 1062773203
+2017-06-14 12:03:02,382-0400 INFO  ReadBuffer RB-LR-Handler(tag: 59, GET) will ask for 1 buffers for a size of 52
+2017-06-14 12:03:02,382-0400 INFO  ReadBuffer RB-LR-Handler(tag: 59, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,382-0400 INFO  LocalIOProvider LR-Handler(tag: 59, GET) rbuf: RB-LR-Handler(tag: 59, GET)
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 59, GET) unregistering (last)
+2017-06-14 12:03:02,382-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 60, GET) request complete; src=file://localhost/utils/prepInputs.sh
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 60, GET) reader: LR-Handler(tag: 60, GET)
+2017-06-14 12:03:02,382-0400 INFO  GetFileHandler Handler(tag: 60, GET) sending length: 52, 440683361
+2017-06-14 12:03:02,383-0400 INFO  ReadBuffer RB-LR-Handler(tag: 60, GET) will ask for 1 buffers for a size of 52
+2017-06-14 12:03:02,383-0400 INFO  ReadBuffer RB-LR-Handler(tag: 60, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,383-0400 INFO  LocalIOProvider LR-Handler(tag: 60, GET) rbuf: RB-LR-Handler(tag: 60, GET)
+2017-06-14 12:03:02,383-0400 INFO  GetFileHandler Handler(tag: 60, GET) unregistering (last)
+2017-06-14 12:03:02,383-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,466-0400 INFO  GetFileHandler Handler(tag: 61, GET) request complete; src=file://localhost/utils/postSweep.sh
+2017-06-14 12:03:02,466-0400 INFO  GetFileHandler Handler(tag: 61, GET) reader: LR-Handler(tag: 61, GET)
+2017-06-14 12:03:02,466-0400 INFO  GetFileHandler Handler(tag: 61, GET) sending length: 694, 1946308165
+2017-06-14 12:03:02,466-0400 INFO  ReadBuffer RB-LR-Handler(tag: 61, GET) will ask for 1 buffers for a size of 694
+2017-06-14 12:03:02,466-0400 INFO  ReadBuffer RB-LR-Handler(tag: 61, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,466-0400 INFO  LocalIOProvider LR-Handler(tag: 61, GET) rbuf: RB-LR-Handler(tag: 61, GET)
+2017-06-14 12:03:02,466-0400 INFO  GetFileHandler Handler(tag: 61, GET) unregistering (last)
+2017-06-14 12:03:02,466-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,467-0400 INFO  GetFileHandler Handler(tag: 62, GET) request complete; src=file://localhost/utils/postSweep.sh
+2017-06-14 12:03:02,467-0400 INFO  GetFileHandler Handler(tag: 62, GET) reader: LR-Handler(tag: 62, GET)
+2017-06-14 12:03:02,467-0400 INFO  GetFileHandler Handler(tag: 62, GET) sending length: 694, 1114548925
+2017-06-14 12:03:02,467-0400 INFO  ReadBuffer RB-LR-Handler(tag: 62, GET) will ask for 1 buffers for a size of 694
+2017-06-14 12:03:02,467-0400 INFO  ReadBuffer RB-LR-Handler(tag: 62, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,467-0400 INFO  LocalIOProvider LR-Handler(tag: 62, GET) rbuf: RB-LR-Handler(tag: 62, GET)
+2017-06-14 12:03:02,467-0400 INFO  GetFileHandler Handler(tag: 62, GET) unregistering (last)
+2017-06-14 12:03:02,467-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,546-0400 INFO  GetFileHandler Handler(tag: 63, GET) request complete; src=file://localhost/utils/snapshot.sh
+2017-06-14 12:03:02,546-0400 INFO  GetFileHandler Handler(tag: 63, GET) reader: LR-Handler(tag: 63, GET)
+2017-06-14 12:03:02,546-0400 INFO  GetFileHandler Handler(tag: 63, GET) sending length: 516, 1537896062
+2017-06-14 12:03:02,546-0400 INFO  ReadBuffer RB-LR-Handler(tag: 63, GET) will ask for 1 buffers for a size of 516
+2017-06-14 12:03:02,546-0400 INFO  ReadBuffer RB-LR-Handler(tag: 63, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,546-0400 INFO  LocalIOProvider LR-Handler(tag: 63, GET) rbuf: RB-LR-Handler(tag: 63, GET)
+2017-06-14 12:03:02,546-0400 INFO  GetFileHandler Handler(tag: 63, GET) unregistering (last)
+2017-06-14 12:03:02,546-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,547-0400 INFO  GetFileHandler Handler(tag: 64, GET) request complete; src=file://localhost/utils/snapshot.sh
+2017-06-14 12:03:02,547-0400 INFO  GetFileHandler Handler(tag: 64, GET) reader: LR-Handler(tag: 64, GET)
+2017-06-14 12:03:02,547-0400 INFO  GetFileHandler Handler(tag: 64, GET) sending length: 516, 1502896056
+2017-06-14 12:03:02,547-0400 INFO  ReadBuffer RB-LR-Handler(tag: 64, GET) will ask for 1 buffers for a size of 516
+2017-06-14 12:03:02,547-0400 INFO  ReadBuffer RB-LR-Handler(tag: 64, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,547-0400 INFO  LocalIOProvider LR-Handler(tag: 64, GET) rbuf: RB-LR-Handler(tag: 64, GET)
+2017-06-14 12:03:02,547-0400 INFO  GetFileHandler Handler(tag: 64, GET) unregistering (last)
+2017-06-14 12:03:02,547-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,626-0400 INFO  GetFileHandler Handler(tag: 65, GET) request complete; src=file://localhost/utils/expandSweep.py
+2017-06-14 12:03:02,626-0400 INFO  GetFileHandler Handler(tag: 65, GET) reader: LR-Handler(tag: 65, GET)
+2017-06-14 12:03:02,626-0400 INFO  GetFileHandler Handler(tag: 65, GET) sending length: 1503, 265842638
+2017-06-14 12:03:02,626-0400 INFO  ReadBuffer RB-LR-Handler(tag: 65, GET) will ask for 1 buffers for a size of 1503
+2017-06-14 12:03:02,627-0400 INFO  ReadBuffer RB-LR-Handler(tag: 65, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,627-0400 INFO  LocalIOProvider LR-Handler(tag: 65, GET) rbuf: RB-LR-Handler(tag: 65, GET)
+2017-06-14 12:03:02,627-0400 INFO  GetFileHandler Handler(tag: 65, GET) unregistering (last)
+2017-06-14 12:03:02,627-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,627-0400 INFO  GetFileHandler Handler(tag: 66, GET) request complete; src=file://localhost/utils/expandSweep.py
+2017-06-14 12:03:02,627-0400 INFO  GetFileHandler Handler(tag: 66, GET) reader: LR-Handler(tag: 66, GET)
+2017-06-14 12:03:02,627-0400 INFO  GetFileHandler Handler(tag: 66, GET) sending length: 1503, 1528939419
+2017-06-14 12:03:02,627-0400 INFO  ReadBuffer RB-LR-Handler(tag: 66, GET) will ask for 1 buffers for a size of 1503
+2017-06-14 12:03:02,627-0400 INFO  ReadBuffer RB-LR-Handler(tag: 66, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:02,627-0400 INFO  LocalIOProvider LR-Handler(tag: 66, GET) rbuf: RB-LR-Handler(tag: 66, GET)
+2017-06-14 12:03:02,627-0400 INFO  GetFileHandler Handler(tag: 66, GET) unregistering (last)
+2017-06-14 12:03:02,627-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:02,710-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 41724512, JVMThreads: 38
+2017-06-14 12:03:02,710-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-38 status=2 workerid=local:000000
+2017-06-14 12:03:02,711-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-31 status=2 workerid=local:000000
+2017-06-14 12:03:03,150-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-38 status=17
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 70, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/output/png/inlet5_X,5,inlet6_Y,7.png
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 70, PUT) destination: file://localhost/output/png/inlet5_X,5,inlet6_Y,7.png
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 71, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/_wrapper.error
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 70, PUT) Transfer done
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 71, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-armb3l9n-0.error
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 72, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/_stdout.txt
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 71, PUT) Transfer done
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 72, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-armb3l9n-0.stdout
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 72, PUT) Transfer done
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 73, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/_wrapper.log
+2017-06-14 12:03:03,151-0400 INFO  PutFileHandler Handler(tag: 73, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-armb3l9n-0.info
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 74, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/output/log/out/2.txt
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 73, PUT) Transfer done
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 74, PUT) destination: file://localhost/output/log/out/2.txt
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 74, PUT) Transfer done
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 75, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/_stderr.txt
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 75, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-armb3l9n-0.stderr
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 75, PUT) Transfer done
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 76, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/output/log/err/2.txt
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 76, PUT) destination: file://localhost/output/log/err/2.txt
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 76, PUT) Transfer done
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 77, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0/output/tgz/2.tgz
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 77, PUT) destination: file://localhost/output/tgz/2.tgz
+2017-06-14 12:03:03,152-0400 INFO  PutFileHandler Handler(tag: 77, PUT) Transfer done
+2017-06-14 12:03:03,154-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-31 status=17
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 79, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/output/tgz/1.tgz
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 79, PUT) destination: file://localhost/output/tgz/1.tgz
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 80, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/output/log/err/1.txt
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 80, PUT) destination: file://localhost/output/log/err/1.txt
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 79, PUT) Transfer done
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 80, PUT) Transfer done
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 81, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/output/log/out/1.txt
+2017-06-14 12:03:03,155-0400 INFO  PutFileHandler Handler(tag: 81, PUT) destination: file://localhost/output/log/out/1.txt
+2017-06-14 12:03:03,156-0400 INFO  PutFileHandler Handler(tag: 81, PUT) Transfer done
+2017-06-14 12:03:03,156-0400 INFO  PutFileHandler Handler(tag: 82, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/_wrapper.error
+2017-06-14 12:03:03,156-0400 INFO  PutFileHandler Handler(tag: 82, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-7rmb3l9n-0.error
+2017-06-14 12:03:03,162-0400 INFO  PutFileHandler Handler(tag: 82, PUT) Transfer done
+2017-06-14 12:03:03,163-0400 INFO  PutFileHandler Handler(tag: 83, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/output/png/inlet5_X,5,inlet6_Y,6.png
+2017-06-14 12:03:03,163-0400 INFO  PutFileHandler Handler(tag: 83, PUT) destination: file://localhost/output/png/inlet5_X,5,inlet6_Y,6.png
+2017-06-14 12:03:03,163-0400 INFO  PutFileHandler Handler(tag: 84, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/_stdout.txt
+2017-06-14 12:03:03,163-0400 INFO  PutFileHandler Handler(tag: 84, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-7rmb3l9n-0.stdout
+2017-06-14 12:03:03,163-0400 INFO  PutFileHandler Handler(tag: 83, PUT) Transfer done
+2017-06-14 12:03:03,163-0400 INFO  PutFileHandler Handler(tag: 84, PUT) Transfer done
+2017-06-14 12:03:03,202-0400 INFO  PutFileHandler Handler(tag: 85, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/_wrapper.log
+2017-06-14 12:03:03,202-0400 INFO  PutFileHandler Handler(tag: 85, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-7rmb3l9n-0.info
+2017-06-14 12:03:03,202-0400 INFO  PutFileHandler Handler(tag: 86, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0/_stderr.txt
+2017-06-14 12:03:03,202-0400 INFO  PutFileHandler Handler(tag: 86, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-7rmb3l9n-0.stderr
+2017-06-14 12:03:03,202-0400 INFO  PutFileHandler Handler(tag: 85, PUT) Transfer done
+2017-06-14 12:03:03,202-0400 INFO  PutFileHandler Handler(tag: 86, PUT) Transfer done
+2017-06-14 12:03:03,203-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-38 status=5 Process completed with exit code 127
+2017-06-14 12:03:03,203-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-24 status=16 workerid=local:000000
+2017-06-14 12:03:03,203-0400 INFO  GetFileHandler Handler(tag: 91, GET) request complete; src=file://localhost/utils/extract.sh
+2017-06-14 12:03:03,206-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,206-0400 INFO  GetFileHandler Handler(tag: 91, GET) reader: LR-Handler(tag: 91, GET)
+2017-06-14 12:03:03,206-0400 INFO  GetFileHandler Handler(tag: 91, GET) sending length: 950, 891617902
+2017-06-14 12:03:03,207-0400 INFO  ReadBuffer RB-LR-Handler(tag: 91, GET) will ask for 1 buffers for a size of 950
+2017-06-14 12:03:03,207-0400 INFO  ReadBuffer RB-LR-Handler(tag: 91, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,207-0400 INFO  LocalIOProvider LR-Handler(tag: 91, GET) rbuf: RB-LR-Handler(tag: 91, GET)
+2017-06-14 12:03:03,207-0400 INFO  GetFileHandler Handler(tag: 91, GET) unregistering (last)
+2017-06-14 12:03:03,207-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,208-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,209-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,209-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,210-0400 DEBUG swift APPLICATION_EXCEPTION jobid=runOpenfoam-armb3l9n-0 - Application exception: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:03,210-0400 INFO  swift END_FAILURE jobid=runOpenfoam-armb3l9n tr=runOpenfoam
+2017-06-14 12:03:03,211-0400 INFO  swift Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:03,211-0400 DEBUG swift PROCEDURE_END line=26 thread=2-0-14-11-18-2-38-4 name=runOpenfoam
+2017-06-14 12:03:03,211-0400 DEBUG swift FOREACH_IT_END line=46 thread=2-0-14-11-18-2
+2017-06-14 12:03:03,298-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-31 status=5 Process completed with exit code 127
+2017-06-14 12:03:03,299-0400 INFO  GetFileHandler Handler(tag: 94, GET) request complete; src=file://localhost/utils/data_IO.py
+2017-06-14 12:03:03,299-0400 INFO  GetFileHandler Handler(tag: 94, GET) reader: LR-Handler(tag: 94, GET)
+2017-06-14 12:03:03,299-0400 INFO  GetFileHandler Handler(tag: 94, GET) sending length: 3243, 739091193
+2017-06-14 12:03:03,299-0400 INFO  ReadBuffer RB-LR-Handler(tag: 94, GET) will ask for 1 buffers for a size of 3243
+2017-06-14 12:03:03,299-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,299-0400 INFO  ReadBuffer RB-LR-Handler(tag: 94, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,299-0400 INFO  LocalIOProvider LR-Handler(tag: 94, GET) rbuf: RB-LR-Handler(tag: 94, GET)
+2017-06-14 12:03:03,299-0400 INFO  GetFileHandler Handler(tag: 94, GET) unregistering (last)
+2017-06-14 12:03:03,300-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,300-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-45 status=16 workerid=local:000000
+2017-06-14 12:03:03,300-0400 INFO  GetFileHandler Handler(tag: 97, GET) request complete; src=file://localhost/utils/extract.sh
+2017-06-14 12:03:03,300-0400 INFO  GetFileHandler Handler(tag: 97, GET) reader: LR-Handler(tag: 97, GET)
+2017-06-14 12:03:03,300-0400 INFO  GetFileHandler Handler(tag: 97, GET) sending length: 950, 950369570
+2017-06-14 12:03:03,300-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,300-0400 INFO  ReadBuffer RB-LR-Handler(tag: 97, GET) will ask for 1 buffers for a size of 950
+2017-06-14 12:03:03,301-0400 INFO  ReadBuffer RB-LR-Handler(tag: 97, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,301-0400 INFO  GetFileHandler Handler(tag: 97, GET) unregistering (last)
+2017-06-14 12:03:03,301-0400 INFO  LocalIOProvider LR-Handler(tag: 97, GET) rbuf: RB-LR-Handler(tag: 97, GET)
+2017-06-14 12:03:03,301-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,302-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,302-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:03,303-0400 DEBUG swift APPLICATION_EXCEPTION jobid=runOpenfoam-7rmb3l9n-0 - Application exception: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:03,303-0400 INFO  swift END_FAILURE jobid=runOpenfoam-7rmb3l9n tr=runOpenfoam
+2017-06-14 12:03:03,303-0400 INFO  swift Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:03,303-0400 DEBUG swift PROCEDURE_END line=26 thread=2-0-14-11-17-1-31-4 name=runOpenfoam
+2017-06-14 12:03:03,304-0400 DEBUG swift FOREACH_IT_END line=46 thread=2-0-14-11-17-1
+2017-06-14 12:03:03,398-0400 INFO  GetFileHandler Handler(tag: 98, GET) request complete; src=file://localhost/sample_inputs/elbowKPI.json
+2017-06-14 12:03:03,398-0400 INFO  GetFileHandler Handler(tag: 98, GET) reader: LR-Handler(tag: 98, GET)
+2017-06-14 12:03:03,398-0400 INFO  GetFileHandler Handler(tag: 98, GET) sending length: 878, 358149740
+2017-06-14 12:03:03,398-0400 INFO  ReadBuffer RB-LR-Handler(tag: 98, GET) will ask for 1 buffers for a size of 878
+2017-06-14 12:03:03,398-0400 INFO  ReadBuffer RB-LR-Handler(tag: 98, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,398-0400 INFO  LocalIOProvider LR-Handler(tag: 98, GET) rbuf: RB-LR-Handler(tag: 98, GET)
+2017-06-14 12:03:03,398-0400 INFO  GetFileHandler Handler(tag: 98, GET) unregistering (last)
+2017-06-14 12:03:03,399-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,399-0400 INFO  GetFileHandler Handler(tag: 99, GET) request complete; src=file://localhost/utils/data_IO.py
+2017-06-14 12:03:03,399-0400 INFO  GetFileHandler Handler(tag: 99, GET) reader: LR-Handler(tag: 99, GET)
+2017-06-14 12:03:03,399-0400 INFO  GetFileHandler Handler(tag: 99, GET) sending length: 3243, 1379001071
+2017-06-14 12:03:03,399-0400 INFO  ReadBuffer RB-LR-Handler(tag: 99, GET) will ask for 1 buffers for a size of 3243
+2017-06-14 12:03:03,399-0400 INFO  ReadBuffer RB-LR-Handler(tag: 99, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,399-0400 INFO  LocalIOProvider LR-Handler(tag: 99, GET) rbuf: RB-LR-Handler(tag: 99, GET)
+2017-06-14 12:03:03,399-0400 INFO  GetFileHandler Handler(tag: 99, GET) unregistering (last)
+2017-06-14 12:03:03,399-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,478-0400 INFO  GetFileHandler Handler(tag: 100, GET) request complete; src=file://localhost/sample_inputs/elbow.tgz
+2017-06-14 12:03:03,478-0400 INFO  GetFileHandler Handler(tag: 100, GET) reader: LR-Handler(tag: 100, GET)
+2017-06-14 12:03:03,478-0400 INFO  GetFileHandler Handler(tag: 100, GET) sending length: 17104, 1210090115
+2017-06-14 12:03:03,478-0400 INFO  ReadBuffer RB-LR-Handler(tag: 100, GET) will ask for 1 buffers for a size of 17104
+2017-06-14 12:03:03,478-0400 INFO  ReadBuffer RB-LR-Handler(tag: 100, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,478-0400 INFO  LocalIOProvider LR-Handler(tag: 100, GET) rbuf: RB-LR-Handler(tag: 100, GET)
+2017-06-14 12:03:03,478-0400 INFO  GetFileHandler Handler(tag: 100, GET) unregistering (last)
+2017-06-14 12:03:03,478-0400 INFO  GetFileHandler Handler(tag: 101, GET) request complete; src=file://localhost/sample_inputs/elbowKPI.json
+2017-06-14 12:03:03,479-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,479-0400 INFO  GetFileHandler Handler(tag: 101, GET) reader: LR-Handler(tag: 101, GET)
+2017-06-14 12:03:03,479-0400 INFO  GetFileHandler Handler(tag: 101, GET) sending length: 878, 576596392
+2017-06-14 12:03:03,479-0400 INFO  ReadBuffer RB-LR-Handler(tag: 101, GET) will ask for 1 buffers for a size of 878
+2017-06-14 12:03:03,479-0400 INFO  ReadBuffer RB-LR-Handler(tag: 101, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,479-0400 INFO  LocalIOProvider LR-Handler(tag: 101, GET) rbuf: RB-LR-Handler(tag: 101, GET)
+2017-06-14 12:03:03,479-0400 INFO  GetFileHandler Handler(tag: 101, GET) unregistering (last)
+2017-06-14 12:03:03,479-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,558-0400 INFO  GetFileHandler Handler(tag: 102, GET) request complete; src=file://localhost/utils/extract.py
+2017-06-14 12:03:03,558-0400 INFO  GetFileHandler Handler(tag: 102, GET) reader: LR-Handler(tag: 102, GET)
+2017-06-14 12:03:03,558-0400 INFO  GetFileHandler Handler(tag: 102, GET) sending length: 3983, 1032688026
+2017-06-14 12:03:03,558-0400 INFO  ReadBuffer RB-LR-Handler(tag: 102, GET) will ask for 1 buffers for a size of 3983
+2017-06-14 12:03:03,558-0400 INFO  ReadBuffer RB-LR-Handler(tag: 102, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,558-0400 INFO  LocalIOProvider LR-Handler(tag: 102, GET) rbuf: RB-LR-Handler(tag: 102, GET)
+2017-06-14 12:03:03,558-0400 INFO  GetFileHandler Handler(tag: 102, GET) unregistering (last)
+2017-06-14 12:03:03,558-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,558-0400 INFO  GetFileHandler Handler(tag: 103, GET) request complete; src=file://localhost/sample_inputs/elbow.tgz
+2017-06-14 12:03:03,559-0400 INFO  GetFileHandler Handler(tag: 103, GET) reader: LR-Handler(tag: 103, GET)
+2017-06-14 12:03:03,559-0400 INFO  GetFileHandler Handler(tag: 103, GET) sending length: 17104, 1030408148
+2017-06-14 12:03:03,559-0400 INFO  ReadBuffer RB-LR-Handler(tag: 103, GET) will ask for 1 buffers for a size of 17104
+2017-06-14 12:03:03,559-0400 INFO  ReadBuffer RB-LR-Handler(tag: 103, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,559-0400 INFO  LocalIOProvider LR-Handler(tag: 103, GET) rbuf: RB-LR-Handler(tag: 103, GET)
+2017-06-14 12:03:03,559-0400 INFO  GetFileHandler Handler(tag: 103, GET) unregistering (last)
+2017-06-14 12:03:03,559-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,638-0400 INFO  GetFileHandler Handler(tag: 104, GET) request complete; src=file://localhost/utils/pvutils.py
+2017-06-14 12:03:03,638-0400 INFO  GetFileHandler Handler(tag: 104, GET) reader: LR-Handler(tag: 104, GET)
+2017-06-14 12:03:03,638-0400 INFO  GetFileHandler Handler(tag: 104, GET) sending length: 15224, 874167663
+2017-06-14 12:03:03,638-0400 INFO  ReadBuffer RB-LR-Handler(tag: 104, GET) will ask for 1 buffers for a size of 15224
+2017-06-14 12:03:03,638-0400 INFO  ReadBuffer RB-LR-Handler(tag: 104, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,638-0400 INFO  LocalIOProvider LR-Handler(tag: 104, GET) rbuf: RB-LR-Handler(tag: 104, GET)
+2017-06-14 12:03:03,639-0400 INFO  GetFileHandler Handler(tag: 104, GET) unregistering (last)
+2017-06-14 12:03:03,639-0400 INFO  GetFileHandler Handler(tag: 105, GET) request complete; src=file://localhost/utils/extract.py
+2017-06-14 12:03:03,639-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,639-0400 INFO  GetFileHandler Handler(tag: 105, GET) reader: LR-Handler(tag: 105, GET)
+2017-06-14 12:03:03,639-0400 INFO  GetFileHandler Handler(tag: 105, GET) sending length: 3983, 1689392590
+2017-06-14 12:03:03,639-0400 INFO  ReadBuffer RB-LR-Handler(tag: 105, GET) will ask for 1 buffers for a size of 3983
+2017-06-14 12:03:03,639-0400 INFO  ReadBuffer RB-LR-Handler(tag: 105, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,639-0400 INFO  LocalIOProvider LR-Handler(tag: 105, GET) rbuf: RB-LR-Handler(tag: 105, GET)
+2017-06-14 12:03:03,639-0400 INFO  GetFileHandler Handler(tag: 105, GET) unregistering (last)
+2017-06-14 12:03:03,639-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,710-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 47935768, JVMThreads: 38
+2017-06-14 12:03:03,710-0400 INFO  RuntimeStats$ProgressTicker   Stage in:2  Failed:2  Finished successfully:1
+2017-06-14 12:03:03,718-0400 INFO  GetFileHandler Handler(tag: 106, GET) request complete; src=file://localhost/utils/pvutils.pyc
+2017-06-14 12:03:03,718-0400 INFO  GetFileHandler Handler(tag: 106, GET) reader: LR-Handler(tag: 106, GET)
+2017-06-14 12:03:03,718-0400 INFO  GetFileHandler Handler(tag: 106, GET) sending length: 15192, 936541358
+2017-06-14 12:03:03,718-0400 INFO  ReadBuffer RB-LR-Handler(tag: 106, GET) will ask for 1 buffers for a size of 15192
+2017-06-14 12:03:03,718-0400 INFO  ReadBuffer RB-LR-Handler(tag: 106, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,718-0400 INFO  LocalIOProvider LR-Handler(tag: 106, GET) rbuf: RB-LR-Handler(tag: 106, GET)
+2017-06-14 12:03:03,718-0400 INFO  GetFileHandler Handler(tag: 106, GET) unregistering (last)
+2017-06-14 12:03:03,718-0400 INFO  GetFileHandler Handler(tag: 107, GET) request complete; src=file://localhost/utils/pvutils.py
+2017-06-14 12:03:03,719-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,719-0400 INFO  GetFileHandler Handler(tag: 107, GET) reader: LR-Handler(tag: 107, GET)
+2017-06-14 12:03:03,719-0400 INFO  GetFileHandler Handler(tag: 107, GET) sending length: 15224, 636354452
+2017-06-14 12:03:03,719-0400 INFO  ReadBuffer RB-LR-Handler(tag: 107, GET) will ask for 1 buffers for a size of 15224
+2017-06-14 12:03:03,719-0400 INFO  ReadBuffer RB-LR-Handler(tag: 107, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,719-0400 INFO  LocalIOProvider LR-Handler(tag: 107, GET) rbuf: RB-LR-Handler(tag: 107, GET)
+2017-06-14 12:03:03,719-0400 INFO  GetFileHandler Handler(tag: 107, GET) unregistering (last)
+2017-06-14 12:03:03,719-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,802-0400 INFO  GetFileHandler Handler(tag: 108, GET) request complete; src=file://localhost/utils/cleanup.sh
+2017-06-14 12:03:03,802-0400 INFO  GetFileHandler Handler(tag: 108, GET) reader: LR-Handler(tag: 108, GET)
+2017-06-14 12:03:03,802-0400 INFO  GetFileHandler Handler(tag: 108, GET) sending length: 36, 1164884698
+2017-06-14 12:03:03,802-0400 INFO  ReadBuffer RB-LR-Handler(tag: 108, GET) will ask for 1 buffers for a size of 36
+2017-06-14 12:03:03,802-0400 INFO  ReadBuffer RB-LR-Handler(tag: 108, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,802-0400 INFO  LocalIOProvider LR-Handler(tag: 108, GET) rbuf: RB-LR-Handler(tag: 108, GET)
+2017-06-14 12:03:03,802-0400 INFO  GetFileHandler Handler(tag: 108, GET) unregistering (last)
+2017-06-14 12:03:03,802-0400 INFO  GetFileHandler Handler(tag: 109, GET) request complete; src=file://localhost/utils/pvutils.pyc
+2017-06-14 12:03:03,803-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,803-0400 INFO  GetFileHandler Handler(tag: 109, GET) reader: LR-Handler(tag: 109, GET)
+2017-06-14 12:03:03,803-0400 INFO  GetFileHandler Handler(tag: 109, GET) sending length: 15192, 1915578953
+2017-06-14 12:03:03,803-0400 INFO  ReadBuffer RB-LR-Handler(tag: 109, GET) will ask for 1 buffers for a size of 15192
+2017-06-14 12:03:03,803-0400 INFO  ReadBuffer RB-LR-Handler(tag: 109, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,803-0400 INFO  LocalIOProvider LR-Handler(tag: 109, GET) rbuf: RB-LR-Handler(tag: 109, GET)
+2017-06-14 12:03:03,803-0400 INFO  GetFileHandler Handler(tag: 109, GET) unregistering (last)
+2017-06-14 12:03:03,803-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,882-0400 INFO  GetFileHandler Handler(tag: 110, GET) request complete; src=file://localhost/utils/data_IO.pyc
+2017-06-14 12:03:03,882-0400 INFO  GetFileHandler Handler(tag: 110, GET) reader: LR-Handler(tag: 110, GET)
+2017-06-14 12:03:03,882-0400 INFO  GetFileHandler Handler(tag: 110, GET) sending length: 3693, 1337920312
+2017-06-14 12:03:03,882-0400 INFO  ReadBuffer RB-LR-Handler(tag: 110, GET) will ask for 1 buffers for a size of 3693
+2017-06-14 12:03:03,882-0400 INFO  ReadBuffer RB-LR-Handler(tag: 110, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,882-0400 INFO  LocalIOProvider LR-Handler(tag: 110, GET) rbuf: RB-LR-Handler(tag: 110, GET)
+2017-06-14 12:03:03,882-0400 INFO  GetFileHandler Handler(tag: 110, GET) unregistering (last)
+2017-06-14 12:03:03,882-0400 INFO  GetFileHandler Handler(tag: 111, GET) request complete; src=file://localhost/utils/cleanup.sh
+2017-06-14 12:03:03,883-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,883-0400 INFO  GetFileHandler Handler(tag: 111, GET) reader: LR-Handler(tag: 111, GET)
+2017-06-14 12:03:03,883-0400 INFO  GetFileHandler Handler(tag: 111, GET) sending length: 36, 1597664800
+2017-06-14 12:03:03,883-0400 INFO  ReadBuffer RB-LR-Handler(tag: 111, GET) will ask for 1 buffers for a size of 36
+2017-06-14 12:03:03,883-0400 INFO  ReadBuffer RB-LR-Handler(tag: 111, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,883-0400 INFO  LocalIOProvider LR-Handler(tag: 111, GET) rbuf: RB-LR-Handler(tag: 111, GET)
+2017-06-14 12:03:03,883-0400 INFO  GetFileHandler Handler(tag: 111, GET) unregistering (last)
+2017-06-14 12:03:03,883-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:03,962-0400 INFO  GetFileHandler Handler(tag: 112, GET) request complete; src=file://localhost/sample_inputs/elbow.pvsm
+2017-06-14 12:03:03,962-0400 INFO  GetFileHandler Handler(tag: 112, GET) reader: LR-Handler(tag: 112, GET)
+2017-06-14 12:03:03,962-0400 INFO  GetFileHandler Handler(tag: 112, GET) sending length: 96217, 699333027
+2017-06-14 12:03:03,962-0400 INFO  ReadBuffer RB-LR-Handler(tag: 112, GET) will ask for 2 buffers for a size of 96217
+2017-06-14 12:03:03,962-0400 INFO  ReadBuffer RB-LR-Handler(tag: 112, GET) actual allocated buffers 2(0 queued)
+2017-06-14 12:03:03,962-0400 INFO  LocalIOProvider LR-Handler(tag: 112, GET) rbuf: RB-LR-Handler(tag: 112, GET)
+2017-06-14 12:03:03,962-0400 INFO  GetFileHandler Handler(tag: 113, GET) request complete; src=file://localhost/utils/data_IO.pyc
+2017-06-14 12:03:03,962-0400 INFO  GetFileHandler Handler(tag: 112, GET) unregistering (last)
+2017-06-14 12:03:03,962-0400 INFO  GetFileHandler Handler(tag: 113, GET) reader: LR-Handler(tag: 113, GET)
+2017-06-14 12:03:03,963-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 2 buffers
+2017-06-14 12:03:03,963-0400 INFO  GetFileHandler Handler(tag: 113, GET) sending length: 3693, 47117090
+2017-06-14 12:03:03,963-0400 INFO  ReadBuffer RB-LR-Handler(tag: 113, GET) will ask for 1 buffers for a size of 3693
+2017-06-14 12:03:03,963-0400 INFO  ReadBuffer RB-LR-Handler(tag: 113, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:03,963-0400 INFO  LocalIOProvider LR-Handler(tag: 113, GET) rbuf: RB-LR-Handler(tag: 113, GET)
+2017-06-14 12:03:03,963-0400 INFO  GetFileHandler Handler(tag: 113, GET) unregistering (last)
+2017-06-14 12:03:03,963-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,042-0400 INFO  GetFileHandler Handler(tag: 114, GET) request complete; src=file://localhost/utils/runOpenfoam.sh
+2017-06-14 12:03:04,042-0400 INFO  GetFileHandler Handler(tag: 114, GET) reader: LR-Handler(tag: 114, GET)
+2017-06-14 12:03:04,042-0400 INFO  GetFileHandler Handler(tag: 114, GET) sending length: 1477, 1020297556
+2017-06-14 12:03:04,042-0400 INFO  ReadBuffer RB-LR-Handler(tag: 114, GET) will ask for 1 buffers for a size of 1477
+2017-06-14 12:03:04,042-0400 INFO  ReadBuffer RB-LR-Handler(tag: 114, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,042-0400 INFO  LocalIOProvider LR-Handler(tag: 114, GET) rbuf: RB-LR-Handler(tag: 114, GET)
+2017-06-14 12:03:04,042-0400 INFO  GetFileHandler Handler(tag: 114, GET) unregistering (last)
+2017-06-14 12:03:04,043-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,043-0400 INFO  GetFileHandler Handler(tag: 115, GET) request complete; src=file://localhost/sample_inputs/elbow.pvsm
+2017-06-14 12:03:04,043-0400 INFO  GetFileHandler Handler(tag: 115, GET) reader: LR-Handler(tag: 115, GET)
+2017-06-14 12:03:04,043-0400 INFO  GetFileHandler Handler(tag: 115, GET) sending length: 96217, 151434889
+2017-06-14 12:03:04,043-0400 INFO  ReadBuffer RB-LR-Handler(tag: 115, GET) will ask for 2 buffers for a size of 96217
+2017-06-14 12:03:04,043-0400 INFO  ReadBuffer RB-LR-Handler(tag: 115, GET) actual allocated buffers 2(0 queued)
+2017-06-14 12:03:04,043-0400 INFO  LocalIOProvider LR-Handler(tag: 115, GET) rbuf: RB-LR-Handler(tag: 115, GET)
+2017-06-14 12:03:04,043-0400 INFO  GetFileHandler Handler(tag: 115, GET) unregistering (last)
+2017-06-14 12:03:04,043-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 2 buffers
+2017-06-14 12:03:04,082-0400 INFO  GetFileHandler Handler(tag: 116, GET) request complete; src=file://localhost/utils/plot.py
+2017-06-14 12:03:04,082-0400 INFO  GetFileHandler Handler(tag: 116, GET) reader: LR-Handler(tag: 116, GET)
+2017-06-14 12:03:04,082-0400 INFO  GetFileHandler Handler(tag: 116, GET) sending length: 618, 997788707
+2017-06-14 12:03:04,082-0400 INFO  ReadBuffer RB-LR-Handler(tag: 116, GET) will ask for 1 buffers for a size of 618
+2017-06-14 12:03:04,082-0400 INFO  ReadBuffer RB-LR-Handler(tag: 116, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,082-0400 INFO  LocalIOProvider LR-Handler(tag: 116, GET) rbuf: RB-LR-Handler(tag: 116, GET)
+2017-06-14 12:03:04,082-0400 INFO  GetFileHandler Handler(tag: 116, GET) unregistering (last)
+2017-06-14 12:03:04,082-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,082-0400 INFO  GetFileHandler Handler(tag: 117, GET) request complete; src=file://localhost/utils/runOpenfoam.sh
+2017-06-14 12:03:04,083-0400 INFO  GetFileHandler Handler(tag: 117, GET) reader: LR-Handler(tag: 117, GET)
+2017-06-14 12:03:04,083-0400 INFO  GetFileHandler Handler(tag: 117, GET) sending length: 1477, 1533144167
+2017-06-14 12:03:04,083-0400 INFO  ReadBuffer RB-LR-Handler(tag: 117, GET) will ask for 1 buffers for a size of 1477
+2017-06-14 12:03:04,083-0400 INFO  ReadBuffer RB-LR-Handler(tag: 117, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,083-0400 INFO  LocalIOProvider LR-Handler(tag: 117, GET) rbuf: RB-LR-Handler(tag: 117, GET)
+2017-06-14 12:03:04,083-0400 INFO  GetFileHandler Handler(tag: 117, GET) unregistering (last)
+2017-06-14 12:03:04,083-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,166-0400 INFO  GetFileHandler Handler(tag: 118, GET) request complete; src=file://localhost//core/xinchen/swift-k/dist/swift-svn/libexec/_swiftwrap.staging
+2017-06-14 12:03:04,166-0400 INFO  GetFileHandler Handler(tag: 118, GET) reader: LR-Handler(tag: 118, GET)
+2017-06-14 12:03:04,166-0400 INFO  GetFileHandler Handler(tag: 118, GET) sending length: 15067, 1953760949
+2017-06-14 12:03:04,166-0400 INFO  ReadBuffer RB-LR-Handler(tag: 118, GET) will ask for 1 buffers for a size of 15067
+2017-06-14 12:03:04,166-0400 INFO  ReadBuffer RB-LR-Handler(tag: 118, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,166-0400 INFO  LocalIOProvider LR-Handler(tag: 118, GET) rbuf: RB-LR-Handler(tag: 118, GET)
+2017-06-14 12:03:04,166-0400 INFO  GetFileHandler Handler(tag: 118, GET) unregistering (last)
+2017-06-14 12:03:04,166-0400 INFO  GetFileHandler Handler(tag: 119, GET) request complete; src=file://localhost/utils/plot.py
+2017-06-14 12:03:04,166-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,167-0400 INFO  GetFileHandler Handler(tag: 119, GET) reader: LR-Handler(tag: 119, GET)
+2017-06-14 12:03:04,167-0400 INFO  GetFileHandler Handler(tag: 119, GET) sending length: 618, 984653821
+2017-06-14 12:03:04,167-0400 INFO  ReadBuffer RB-LR-Handler(tag: 119, GET) will ask for 1 buffers for a size of 618
+2017-06-14 12:03:04,167-0400 INFO  ReadBuffer RB-LR-Handler(tag: 119, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,167-0400 INFO  LocalIOProvider LR-Handler(tag: 119, GET) rbuf: RB-LR-Handler(tag: 119, GET)
+2017-06-14 12:03:04,167-0400 INFO  GetFileHandler Handler(tag: 119, GET) unregistering (last)
+2017-06-14 12:03:04,167-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 120, GET) request complete; src=file://localhost/utils/prepInputs.sh
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 120, GET) reader: LR-Handler(tag: 120, GET)
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 120, GET) sending length: 52, 295051635
+2017-06-14 12:03:04,246-0400 INFO  ReadBuffer RB-LR-Handler(tag: 120, GET) will ask for 1 buffers for a size of 52
+2017-06-14 12:03:04,246-0400 INFO  ReadBuffer RB-LR-Handler(tag: 120, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,246-0400 INFO  LocalIOProvider LR-Handler(tag: 120, GET) rbuf: RB-LR-Handler(tag: 120, GET)
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 120, GET) unregistering (last)
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 121, GET) request complete; src=file://localhost//core/xinchen/swift-k/dist/swift-svn/libexec/_swiftwrap.staging
+2017-06-14 12:03:04,246-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 121, GET) reader: LR-Handler(tag: 121, GET)
+2017-06-14 12:03:04,246-0400 INFO  GetFileHandler Handler(tag: 121, GET) sending length: 15067, 1945699500
+2017-06-14 12:03:04,247-0400 INFO  ReadBuffer RB-LR-Handler(tag: 121, GET) will ask for 1 buffers for a size of 15067
+2017-06-14 12:03:04,247-0400 INFO  ReadBuffer RB-LR-Handler(tag: 121, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,247-0400 INFO  LocalIOProvider LR-Handler(tag: 121, GET) rbuf: RB-LR-Handler(tag: 121, GET)
+2017-06-14 12:03:04,247-0400 INFO  GetFileHandler Handler(tag: 121, GET) unregistering (last)
+2017-06-14 12:03:04,247-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 122, GET) request complete; src=file://localhost/utils/postSweep.sh
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 122, GET) reader: LR-Handler(tag: 122, GET)
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 122, GET) sending length: 694, 137009221
+2017-06-14 12:03:04,326-0400 INFO  ReadBuffer RB-LR-Handler(tag: 122, GET) will ask for 1 buffers for a size of 694
+2017-06-14 12:03:04,326-0400 INFO  ReadBuffer RB-LR-Handler(tag: 122, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,326-0400 INFO  LocalIOProvider LR-Handler(tag: 122, GET) rbuf: RB-LR-Handler(tag: 122, GET)
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 122, GET) unregistering (last)
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 123, GET) request complete; src=file://localhost/utils/prepInputs.sh
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 123, GET) reader: LR-Handler(tag: 123, GET)
+2017-06-14 12:03:04,326-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,326-0400 INFO  GetFileHandler Handler(tag: 123, GET) sending length: 52, 1071974402
+2017-06-14 12:03:04,326-0400 INFO  ReadBuffer RB-LR-Handler(tag: 123, GET) will ask for 1 buffers for a size of 52
+2017-06-14 12:03:04,327-0400 INFO  ReadBuffer RB-LR-Handler(tag: 123, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,327-0400 INFO  LocalIOProvider LR-Handler(tag: 123, GET) rbuf: RB-LR-Handler(tag: 123, GET)
+2017-06-14 12:03:04,327-0400 INFO  GetFileHandler Handler(tag: 123, GET) unregistering (last)
+2017-06-14 12:03:04,327-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,406-0400 INFO  GetFileHandler Handler(tag: 124, GET) request complete; src=file://localhost/utils/snapshot.sh
+2017-06-14 12:03:04,406-0400 INFO  GetFileHandler Handler(tag: 124, GET) reader: LR-Handler(tag: 124, GET)
+2017-06-14 12:03:04,406-0400 INFO  GetFileHandler Handler(tag: 124, GET) sending length: 516, 1981794450
+2017-06-14 12:03:04,406-0400 INFO  ReadBuffer RB-LR-Handler(tag: 124, GET) will ask for 1 buffers for a size of 516
+2017-06-14 12:03:04,406-0400 INFO  ReadBuffer RB-LR-Handler(tag: 124, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,406-0400 INFO  LocalIOProvider LR-Handler(tag: 124, GET) rbuf: RB-LR-Handler(tag: 124, GET)
+2017-06-14 12:03:04,406-0400 INFO  GetFileHandler Handler(tag: 124, GET) unregistering (last)
+2017-06-14 12:03:04,406-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,406-0400 INFO  GetFileHandler Handler(tag: 125, GET) request complete; src=file://localhost/utils/postSweep.sh
+2017-06-14 12:03:04,406-0400 INFO  GetFileHandler Handler(tag: 125, GET) reader: LR-Handler(tag: 125, GET)
+2017-06-14 12:03:04,407-0400 INFO  GetFileHandler Handler(tag: 125, GET) sending length: 694, 1882986256
+2017-06-14 12:03:04,407-0400 INFO  ReadBuffer RB-LR-Handler(tag: 125, GET) will ask for 1 buffers for a size of 694
+2017-06-14 12:03:04,407-0400 INFO  ReadBuffer RB-LR-Handler(tag: 125, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,407-0400 INFO  LocalIOProvider LR-Handler(tag: 125, GET) rbuf: RB-LR-Handler(tag: 125, GET)
+2017-06-14 12:03:04,407-0400 INFO  GetFileHandler Handler(tag: 125, GET) unregistering (last)
+2017-06-14 12:03:04,407-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,486-0400 INFO  GetFileHandler Handler(tag: 126, GET) request complete; src=file://localhost/utils/expandSweep.py
+2017-06-14 12:03:04,486-0400 INFO  GetFileHandler Handler(tag: 126, GET) reader: LR-Handler(tag: 126, GET)
+2017-06-14 12:03:04,486-0400 INFO  GetFileHandler Handler(tag: 126, GET) sending length: 1503, 245046691
+2017-06-14 12:03:04,486-0400 INFO  ReadBuffer RB-LR-Handler(tag: 126, GET) will ask for 1 buffers for a size of 1503
+2017-06-14 12:03:04,486-0400 INFO  ReadBuffer RB-LR-Handler(tag: 126, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,486-0400 INFO  LocalIOProvider LR-Handler(tag: 126, GET) rbuf: RB-LR-Handler(tag: 126, GET)
+2017-06-14 12:03:04,486-0400 INFO  GetFileHandler Handler(tag: 126, GET) unregistering (last)
+2017-06-14 12:03:04,486-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,486-0400 INFO  GetFileHandler Handler(tag: 127, GET) request complete; src=file://localhost/utils/snapshot.sh
+2017-06-14 12:03:04,487-0400 INFO  GetFileHandler Handler(tag: 127, GET) reader: LR-Handler(tag: 127, GET)
+2017-06-14 12:03:04,487-0400 INFO  GetFileHandler Handler(tag: 127, GET) sending length: 516, 212093924
+2017-06-14 12:03:04,487-0400 INFO  ReadBuffer RB-LR-Handler(tag: 127, GET) will ask for 1 buffers for a size of 516
+2017-06-14 12:03:04,487-0400 INFO  ReadBuffer RB-LR-Handler(tag: 127, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,487-0400 INFO  LocalIOProvider LR-Handler(tag: 127, GET) rbuf: RB-LR-Handler(tag: 127, GET)
+2017-06-14 12:03:04,487-0400 INFO  GetFileHandler Handler(tag: 127, GET) unregistering (last)
+2017-06-14 12:03:04,487-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,570-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-24 status=2 workerid=local:000000
+2017-06-14 12:03:04,570-0400 INFO  GetFileHandler Handler(tag: 129, GET) request complete; src=file://localhost/utils/expandSweep.py
+2017-06-14 12:03:04,570-0400 INFO  GetFileHandler Handler(tag: 129, GET) reader: LR-Handler(tag: 129, GET)
+2017-06-14 12:03:04,570-0400 INFO  GetFileHandler Handler(tag: 129, GET) sending length: 1503, 486478771
+2017-06-14 12:03:04,571-0400 INFO  ReadBuffer RB-LR-Handler(tag: 129, GET) will ask for 1 buffers for a size of 1503
+2017-06-14 12:03:04,571-0400 INFO  ReadBuffer RB-LR-Handler(tag: 129, GET) actual allocated buffers 1(0 queued)
+2017-06-14 12:03:04,571-0400 INFO  LocalIOProvider LR-Handler(tag: 129, GET) rbuf: RB-LR-Handler(tag: 129, GET)
+2017-06-14 12:03:04,571-0400 INFO  GetFileHandler Handler(tag: 129, GET) unregistering (last)
+2017-06-14 12:03:04,571-0400 INFO  ReadBuffer RB-LR-Handler(tag: -1, GET) de-allocating 1 buffers
+2017-06-14 12:03:04,650-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-45 status=2 workerid=local:000000
+2017-06-14 12:03:04,710-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 51582296, JVMThreads: 38
+2017-06-14 12:03:04,710-0400 INFO  RuntimeStats$ProgressTicker   Active:2  Failed:2  Finished successfully:1
+2017-06-14 12:03:04,998-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-24 status=17
+2017-06-14 12:03:04,998-0400 INFO  PutFileHandler Handler(tag: 132, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/output/log/err/0.txt
+2017-06-14 12:03:04,998-0400 INFO  PutFileHandler Handler(tag: 132, PUT) destination: file://localhost/output/log/err/0.txt
+2017-06-14 12:03:04,998-0400 INFO  PutFileHandler Handler(tag: 133, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/_stderr.txt
+2017-06-14 12:03:04,998-0400 INFO  PutFileHandler Handler(tag: 133, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-8rmb3l9n-0.stderr
+2017-06-14 12:03:04,998-0400 INFO  PutFileHandler Handler(tag: 132, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 134, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/_stdout.txt
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 134, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-8rmb3l9n-0.stdout
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 133, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 135, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/output/log/out/0.txt
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 135, PUT) destination: file://localhost/output/log/out/0.txt
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 134, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 135, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 136, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/_wrapper.log
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 136, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-8rmb3l9n-0.info
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 137, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/_wrapper.error
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 137, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-8rmb3l9n-0.error
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 136, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 138, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/output/tgz/0.tgz
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 138, PUT) destination: file://localhost/output/tgz/0.tgz
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 137, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 139, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0/output/png/inlet5_X,5,inlet6_Y,5.png
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 139, PUT) destination: file://localhost/output/png/inlet5_X,5,inlet6_Y,5.png
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 138, PUT) Transfer done
+2017-06-14 12:03:04,999-0400 INFO  PutFileHandler Handler(tag: 139, PUT) Transfer done
+2017-06-14 12:03:05,054-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-24 status=5 Process completed with exit code 127
+2017-06-14 12:03:05,055-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,056-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,057-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,058-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,058-0400 DEBUG swift APPLICATION_EXCEPTION jobid=runOpenfoam-8rmb3l9n-0 - Application exception: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:05,058-0400 INFO  swift END_FAILURE jobid=runOpenfoam-8rmb3l9n tr=runOpenfoam
+2017-06-14 12:03:05,058-0400 INFO  swift Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:05,059-0400 DEBUG swift PROCEDURE_END line=26 thread=2-0-14-11-16-0-24-4 name=runOpenfoam
+2017-06-14 12:03:05,059-0400 DEBUG swift FOREACH_IT_END line=46 thread=2-0-14-11-16-0
+2017-06-14 12:03:05,106-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-45 status=17
+2017-06-14 12:03:05,106-0400 INFO  PutFileHandler Handler(tag: 142, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/_wrapper.log
+2017-06-14 12:03:05,106-0400 INFO  PutFileHandler Handler(tag: 142, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-9rmb3l9n-0.info
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 143, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/_wrapper.error
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 143, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-9rmb3l9n-0.error
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 142, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 144, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/output/tgz/3.tgz
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 143, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 144, PUT) destination: file://localhost/output/tgz/3.tgz
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 145, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/_stderr.txt
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 145, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-9rmb3l9n-0.stderr
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 144, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 146, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/output/png/inlet5_X,5,inlet6_Y,8.png
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 145, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 146, PUT) destination: file://localhost/output/png/inlet5_X,5,inlet6_Y,8.png
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 146, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 147, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/output/log/err/3.txt
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 147, PUT) destination: file://localhost/output/log/err/3.txt
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 147, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 148, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/output/log/out/3.txt
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 148, PUT) destination: file://localhost/output/log/out/3.txt
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 148, PUT) Transfer done
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 149, PUT) source: /tmp/swiftwork/openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0/_stdout.txt
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 149, PUT) destination: file://localhost/run004/openfoam-run004.d/runOpenfoam-9rmb3l9n-0.stdout
+2017-06-14 12:03:05,107-0400 INFO  PutFileHandler Handler(tag: 149, PUT) Transfer done
+2017-06-14 12:03:05,198-0400 INFO  Execute TASK_STATUS_CHANGE taskid=task-45 status=5 Process completed with exit code 127
+2017-06-14 12:03:05,199-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,200-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,201-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,201-0400 INFO  LateBindingScheduler jobs queued: 0
+2017-06-14 12:03:05,202-0400 DEBUG swift APPLICATION_EXCEPTION jobid=runOpenfoam-9rmb3l9n-0 - Application exception: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:05,202-0400 INFO  swift END_FAILURE jobid=runOpenfoam-9rmb3l9n tr=runOpenfoam
+2017-06-14 12:03:05,202-0400 INFO  swift Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+2017-06-14 12:03:05,202-0400 DEBUG swift PROCEDURE_END line=26 thread=2-0-14-11-19-3-45-4 name=runOpenfoam
+2017-06-14 12:03:05,202-0400 DEBUG swift FOREACH_IT_END line=46 thread=2-0-14-11-19-3
+2017-06-14 12:03:05,203-0400 INFO  RuntimeStats$ProgressTicker HeapMax: 954728448, CrtHeap: 506462208, UsedHeap: 52496128, JVMThreads: 38
+2017-06-14 12:03:05,203-0400 INFO  RuntimeStats$ProgressTicker   Failed:4  Finished successfully:1
+2017-06-14 12:03:05,217-0400 INFO  swift Errors detected. Cleanup not done.
+2017-06-14 12:03:05,217-0400 INFO  Executor Run failed
+Execution completed with errors
+	throw @ swift.k, line: 112
+	swift:mains @ openfoam, line: 185
+
+	at org.globus.cog.karajan.compiled.nodes.Throw.runBody(Throw.java:51)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.If.run(If.java:184)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.user.Function.runBody(Function.java:123)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.runBody(InvocationWrapper.java:288)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.run(InvocationWrapper.java:93)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.griphyn.vdl.karajan.lib.restartLog.RestartLog.runBody(RestartLog.java:104)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.FramedInternalFunction.run(FramedInternalFunction.java:82)
+	at k.thr.LWThread.run(LWThread.java:291)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+	at java.lang.Thread.run(Thread.java:748)
+2017-06-14 12:03:05,219-0400 INFO  Loader Swift finished with errors
+2017-06-14 12:03:05,220-0400 INFO  ChannelManager Notifying peers of shutdown

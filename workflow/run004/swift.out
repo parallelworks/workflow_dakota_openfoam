@@ -1,0 +1,188 @@
+Swift trunk git-rev: 04208acc2a9af9ea900ae5c4a1d01bcc93ac07d2 heads/master 6744
+RunID: run004
+Progress: Wed, 14 Jun 2017 12:02:59-0400
+Progress: Wed, 14 Jun 2017 12:03:00-0400  Stage in:1
+
+4 Cases in Simulation
+
+Progress: Wed, 14 Jun 2017 12:03:01-0400  Stage in:2  Submitted:2  Finished successfully:1
+Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+Progress: Wed, 14 Jun 2017 12:03:03-0400  Stage in:2  Failed:2  Finished successfully:1
+Progress: Wed, 14 Jun 2017 12:03:04-0400  Active:2  Failed:2  Finished successfully:1
+Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+Final status: Wed, 14 Jun 2017 12:03:05-0400  Failed:4  Finished successfully:1
+The following errors have occurred:
+1. Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-7rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+2. Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-8rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+3. Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-armb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157
+4. Exception in runOpenfoam:
+    Host: linuxpool
+    Directory: openfoam-run004/jobs/r/runOpenfoam-9rmb3l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: Application /bin/bash failed with an exit code of 127
+utils/runOpenfoam.sh: line 48: docker: command not found
+rm: cannot remove 'processor*': No such file or directory
+tar: example_outputs: Cannot stat: No such file or directory
+tar: Exiting with failure status due to previous errors
+	exception @ swift-int-staging.k, line: 182
+Caused by: Process completed with exit code 127
+
+	k:assign @ swift.k, line: 157

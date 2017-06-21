@@ -1,0 +1,78 @@
+Swift trunk git-rev: 04208acc2a9af9ea900ae5c4a1d01bcc93ac07d2 heads/master 6744
+RunID: run002
+Progress: Wed, 14 Jun 2017 11:56:47-0400
+Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run002/jobs/e/expandSweep-yxy23l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: mkdir /tmp/swiftwork/openfoam-run002: Permission denied at /core/ariel/swift-pw-bin/swift-svn/bin/worker.pl line 1455.
+
+
+	k:assign @ swift.k, line: 157
+Caused by: Exception in expandSweep:
+    Host: linuxpool
+    Directory: openfoam-run002/jobs/e/expandSweep-yxy23l9n-0
+	exception @ swift-int-staging.k, line: 187
+	providerStaging:execute2 @ swift.k, line: 126
+	executeSelect @ swift.k, line: 193
+Caused by: 
+	exception @ swift-int-staging.k, line: 182
+Caused by: mkdir /tmp/swiftwork/openfoam-run002: Permission denied at /core/ariel/swift-pw-bin/swift-svn/bin/worker.pl line 1455.
+
+
+Exception in thread "pool-1-thread-13" <DependencyException>
+	at org.griphyn.vdl.karajan.lib.swiftscript.ReadData.function(ReadData.java:89)
+	at org.griphyn.vdl.karajan.lib.SwiftFunction.runBody(SwiftFunction.java:82)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.UParallel$1.run(UParallel.java:91)
+	at k.thr.LWThread.run(LWThread.java:291)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+	at java.lang.Thread.run(Thread.java:748)
+Caused by: <DependencyException>
+	at org.griphyn.vdl.karajan.lib.Mark.function(Mark.java:73)
+	at org.griphyn.vdl.karajan.lib.SwiftFunction.runBody(SwiftFunction.java:82)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.Catch.runBody(Catch.java:73)
+	at org.globus.cog.karajan.compiled.nodes.InternalFunction.run(InternalFunction.java:175)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.UTry.run(UTry.java:69)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.If.run(If.java:184)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.If.run(If.java:184)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.user.Function.runBody(Function.java:123)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.runBody(InvocationWrapper.java:288)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.run(InvocationWrapper.java:93)
+	at org.globus.cog.karajan.compiled.nodes.CompoundNode.runChild(CompoundNode.java:112)
+	at org.globus.cog.karajan.compiled.nodes.Sequential.run(Sequential.java:41)
+	at org.globus.cog.karajan.compiled.nodes.user.Function.runBody(Function.java:123)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.runBody(InvocationWrapper.java:288)
+	at org.globus.cog.karajan.compiled.nodes.user.InvocationWrapper.run(InvocationWrapper.java:93)
+	... 6 more
+Progress: Wed, 14 Jun 2017 11:56:48-0400  Failed:1
+No events in 1s. Details dumped to log.
+Finding dependency loops... none found
+The following threads are independently hung:
+Thread: 2-0-13-10-15-0, waiting on cases (declared on line 40)
+	swiftscript:length, openfoam, line 42
+
+----
+Irrecoverable error found. Exiting.

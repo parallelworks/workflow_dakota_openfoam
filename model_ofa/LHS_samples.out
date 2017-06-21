@@ -1,0 +1,28 @@
+ $ LHS File Format Version 1.00 
+$
+$ This LHS run was executed on  6/21/17 at 21:48:56.84
+$ with LHS Version: 2.30 Release 1, Compiled May 31, 2001        
+$ The run title was:
+$ Pecos::LHSDriver
+$
+$ Message output file for this run: LHS_distributions.out
+$
+$ Input file(s) for this run: 
+$
+$ Point Values for the distributions follow:
+$
+$ All point values represent mean values that
+$ were calculated from the actual LHS sample.
+$
+    Uniform1              4.0667604E+00
+    Uniform2              1.0800407E+01
+$
+@UNCERTAINTY
+  @OBSERVATIONS      3
+  @VARIABLES      2
+    Uniform1:          
+    Uniform2:          
+@SAMPLEDATA
+           1           2   7.7264950509803993        16.305993357673287     
+           2           2  0.80554415704682469        11.633989624679089     
+           3           2   3.6682419641874731        4.4612373023604359     

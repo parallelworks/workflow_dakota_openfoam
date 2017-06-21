@@ -1,0 +1,29 @@
+#! /bin/bash
+
+export PATH=$PATH:/swift-pw-bin/swift-svn/bin
+
+EXECUTE=$1
+COASTERURL=$2
+
+# work directory on headnode
+WORKDIR="/tmp/swiftwork"
+
+STAGEINS=""
+for INF in `ls -1`; do
+	if [ -f "$INF" ]; then
+		ABSPATH=`readlink -f $INF`
+		if [ "$STAGEINS" == "" ]; then
+			STAGEINS="$ABSPATH -> $INF"
+		else
+			STAGEINS="$STAGEINS : $ABSPATH -> $INF"
+		fi
+	fi
+done
+
+STAGEOUTS="$PWD/* <- *"
+JOBDIR=`basename $PWD`
+cog-job-submit -provider "coaster-persistent" -service-contact $COASTERURL \
+	-stagein "$STAGEINS" -stageout "$STAGEOUTS" -cleanup "." -redirected \
+	-directory "$WORKDIR/$JOBDIR" \
+	$EXECUTE 1>output.txt 2>sim.log
+	
