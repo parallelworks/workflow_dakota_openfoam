@@ -11,6 +11,7 @@ sudo chmod 777 * -R
 #rm -fr templatedir/*
 cp swift.conf templatedir
 cp dakota/* templatedir
+cp dakota/utils/* templatedir
 #prepare openfoam
 #cp -ar case sample_inputs utils templatedir
 #./utils/prepInputs.sh
@@ -57,4 +58,4 @@ echo "Plotting Prediction Results"
 python templatedir/graph.py $htmlfile
 
 #delete dakota files
-./dakota/dakota_cleanup
+./templatedir/dakota_cleanup

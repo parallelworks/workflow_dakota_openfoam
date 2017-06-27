@@ -60,7 +60,7 @@ touch open.foam
 cd ../
 ./extract.sh /opt/paraview530/bin extract.py input/system/controlDict input/elbowKPI.json example_outputs/$params/ example_outputs/$params/metrics.csv plot.py
 
-tar cvzf ${3}.tar.gz example_outputs
+tar cvzf ${params}.tar.gz example_outputs
 
 rm $out >/dev/null 2>&1
 #cp _stdout_1.txt input/log_openfoam.out >/dev/null 2>&1
