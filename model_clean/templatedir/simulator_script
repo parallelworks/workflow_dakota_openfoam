@@ -41,7 +41,7 @@ chmod 777 -R *
 
 #swift_driver "./utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm $(cat input.in) out.tgz out.png" "$coasterurl"
 
-swift_driver "untar_and_run.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm $(cat input.in) out.tgz out.png" "$coasterurl"
+swift_driver "untar_and_run.sh sample_inputs/elbow.tgz null $(cat input.in) out.tgz null" "$coasterurl"
 
 #swift_driver "chmod 777 -R *" "$coasterurl"
 #cat output.txt

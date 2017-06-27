@@ -15,4 +15,5 @@ export PATH=$PATH:/core/xinchen/swift-k/dist/swift-svn/bin
 
 
 # ./runDakota.sh sample_inputs/dakota_case.in results/out.dat results/out.html 
+rm -fr work_dir
 docker run -i --rm -v $PWD:/scratch -w /scratch parallelworks/dakota_openfoam /bin/bash runDakota.sh sample_inputs/dakota_case.in results/out.dat results/out.html 

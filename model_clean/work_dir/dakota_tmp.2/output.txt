@@ -1,10 +1,10 @@
 sample_inputs/
-sample_inputs/elbowKPI.json
+sample_inputs/unused/
+sample_inputs/unused/elbow.pvsm
+sample_inputs/unused/elbow.sweep
+sample_inputs/unused/params.run
 sample_inputs/elbow.tgz
 sample_inputs/dakota_case.in
-sample_inputs/elbow.pvsm
-sample_inputs/elbow.sweep
-sample_inputs/params.run
 utils/
 utils/pvutils.py
 utils/pvutils.pyc
@@ -22,11 +22,12 @@ utils/prepInputs.sh
 utils/extract.sh
 utils/data_IO.pyc
 utils/data_IO.py
-sample_inputs/elbow.tgz sample_inputs/elbow.pvsm inlet5_X,5.241663,inlet6_Y,6.908497 out.tgz out.png
+sample_inputs/elbow.tgz null inlet5_X,5.241663,inlet6_Y,6.908497 out.tgz null
 case/elbow.msh
 case/Allclean
 case/constant/
 case/constant/transportProperties
+case/elbowKPI.json
 case/system/
 case/system/foamDataToFluentDict
 case/system/controlDict
@@ -66,10 +67,10 @@ Generating KPIs
 ClipUy
 ClipUx
 example_outputs/
-example_outputs/openFOAM/
-example_outputs/openFOAM/metrics.csv
-example_outputs/openFOAM/out_ClipUx.png
-example_outputs/openFOAM/out_stl.png
-example_outputs/openFOAM/out_ClipUy.png
-example_outputs/openFOAM/out_ClipUy.gif
+example_outputs/inlet5_X,5.241663,inlet6_Y,6.908497/
+example_outputs/inlet5_X,5.241663,inlet6_Y,6.908497/metrics.csv
+example_outputs/inlet5_X,5.241663,inlet6_Y,6.908497/out_ClipUx.png
+example_outputs/inlet5_X,5.241663,inlet6_Y,6.908497/out_stl.png
+example_outputs/inlet5_X,5.241663,inlet6_Y,6.908497/out_ClipUy.png
+example_outputs/inlet5_X,5.241663,inlet6_Y,6.908497/out_ClipUy.gif
 current work dir is /tmp/swiftwork/dakota_tmp.2

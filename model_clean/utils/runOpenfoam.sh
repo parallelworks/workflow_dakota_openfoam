@@ -49,7 +49,7 @@ $docker_run run.sh
 #/bin/bash run.sh
 ec=$?
 
-rm processor* -R
+#rm processor* -R
 
 touch open.foam
 
@@ -59,7 +59,7 @@ touch open.foam
 
 cd ../
 
-utils/extract.sh /opt/paraview530/bin utils/extract.py input/system/controlDict sample_inputs/elbowKPI.json example_outputs/openFOAM/ example_outputs/openFOAM/metrics.csv utils/plot.py
+utils/extract.sh /opt/paraview530/bin utils/extract.py input/system/controlDict input/elbowKPI.json example_outputs/$params/ example_outputs/$params/metrics.csv utils/plot.py
 
 
 
