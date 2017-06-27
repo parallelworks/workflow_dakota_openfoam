@@ -1,12 +1,12 @@
 #!/bin/bash
 #pwd
 #ls -fl
-tar xvf transferin.tar --strip-components 1
+#tar xvf transferin.tar --strip-components 1
 chmod 777 -R *
 #ls -fl
 #echo $1
 #echo $2
-./utils/runOpenfoam.sh $1 $2 $3 $4 $5
+./runOpenfoam.sh $1 $2 $3 $4 $5
 #ls -fl
 tail -n +2 example_outputs/$3/metrics.csv | cut -d "," -f 2 > results.txt
 tar cvzf ${3}.tar.gz example_outputs

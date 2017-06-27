@@ -26,7 +26,7 @@ cat input.in
 
 #just create results.txt file to register it for transfer
 echo "placeholder" > $(cat input.in).tar.gz
-echo "placeholder" > results.txt
+#echo "placeholder" > results.txt
 
 
 
@@ -41,7 +41,11 @@ chmod 777 -R *
 
 #swift_driver "./utils/runOpenfoam.sh sample_inputs/elbow.tgz sample_inputs/elbow.pvsm $(cat input.in) out.tgz out.png" "$coasterurl"
 
-swift_driver "untar_and_run.sh elbow.tgz null $(cat input.in) out.tgz null" "$coasterurl"
+#swift_driver "untar_and_run.sh elbow.tgz null $(cat input.in) out.tgz null" "$coasterurl"
+swift_driver "runOpenfoam.sh elbow.tgz null $(cat input.in) out.tgz null" "$coasterurl"
+
+tar xf $(cat input.in).tar.gz
+tail -n +2 example_outputs/$(cat input.in)/metrics.csv | cut -d "," -f 2 > results.txt
 
 #swift_driver "chmod 777 -R *" "$coasterurl"
 #cat output.txt

@@ -1,13 +1,3 @@
-openfoam/utils/
-openfoam/utils/pvutils.py
-openfoam/utils/pvutils.pyc
-openfoam/utils/runOpenfoam.sh
-openfoam/utils/extract.py
-openfoam/utils/plot.py
-openfoam/utils/prepInputs.sh
-openfoam/utils/extract.sh
-openfoam/utils/data_IO.pyc
-openfoam/utils/data_IO.py
 elbow.tgz null inlet5_X,6.100473,inlet6_Y,5.115309 out.tgz null
 openfoam/case/elbow.msh
 openfoam/case/Allclean
@@ -59,4 +49,3 @@ example_outputs/inlet5_X,6.100473,inlet6_Y,5.115309/out_ClipUx.png
 example_outputs/inlet5_X,6.100473,inlet6_Y,5.115309/out_stl.png
 example_outputs/inlet5_X,6.100473,inlet6_Y,5.115309/out_ClipUy.png
 example_outputs/inlet5_X,6.100473,inlet6_Y,5.115309/out_ClipUy.gif
-current work dir is /tmp/swiftwork/dakota_tmp.3
