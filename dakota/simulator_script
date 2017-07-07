@@ -1,4 +1,7 @@
 #! /bin/bash
+echo "arg1 is: $1"
+echo "arg2 is: $2"
+
 
 # get the coaster service address
 coasterurl=$(cat swift.conf | grep URL | sed "s/URL: \"//g" | sed "s/\"//")
@@ -55,9 +58,10 @@ tail -n +2 example_outputs/$(cat input.in)/metrics.csv | cut -d "," -f 2 > resul
 cat output.txt
 cat sim.log
 cat results.txt
-ls -fl
+pwd
+#echo abc > tmp.txt
 #python p1.py
 #cat input.in
-
 cp results.txt $2
 
+ls -fl

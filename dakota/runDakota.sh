@@ -27,7 +27,7 @@ export PYTHONPATH=$PYTHONPATH:$PWD/utils
 echo "Running DOE Analysis"
 dakota -input $infile
 ec=$?
-
+mkdir results
 if [ -f "out_dace.dat" ] && [ "$ec" == "0" ];then
     cp out_dace.dat $datfile
 else
