@@ -58,7 +58,21 @@ touch open.foam
 #../utils/snapshot.sh ../$state_file
 
 cd ../
-./extract.sh /opt/paraview530/bin extract.py input/system/controlDict input/elbowKPI.json example_outputs/$params/ example_outputs/$params/metrics.csv plot.py
+
+mkdir example_outputs
+mkdir example_outputs/$params
+
+echo "./extract.sh /opt/paraview530/bin extract.py input/system/controlDict input/elbowKPI.json example_outputs/$params/ example_outputs/$params/metrics.csv plot.py" > run_ME.sh
+
+echo "ls -fl" >>run_ME.sh
+
+cat run_ME.sh
+
+sudo chmod 777 -R *
+
+docker_run_ME="docker run -i --rm -v $PWD:/scratch -w /scratch xinchenguo/paraview530 /bin/bash"
+
+$docker_run_ME run_ME.sh
 
 tar cvzf ${params}.tar.gz example_outputs
 
