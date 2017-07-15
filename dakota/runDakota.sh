@@ -40,9 +40,9 @@ genResponse() {
 awk 'BEGIN {FS=" "};NR > 1 {print $2,$3,'\$$2'}' $1 > out_dace.spd
 cat > out_dace.spk << END
  Load[name = test, file = 'out_dace.spd', n_predictors = 2,n_responses = 1]
- CreateAxes[name = ax_2d, bounds = '0 10 | 0 20 ']
+ CreateAxes[name = ax_2d, bounds = 'INLET5_X_MIN INLET5_X_MAX | INLET6_Y_MIN INLET6_Y_MAX ']
  CreateSample[name = test_data, axes = ax_2d, grid_points = (100,100),labels = (radius,height)]
- CreateSurface[name = kriging_branin_local, data = test, type = kriging, lower_bounds = (0, 0), upper_bounds = (10, 20), optimization_method = local ]
+ CreateSurface[name = kriging_branin_local, data = test, type = kriging, lower_bounds = (INLET5_X_MIN, INLET6_Y_MIN), upper_bounds = (INLET5_X_MAX, INLET6_Y_MAX), optimization_method = local ]
  Evaluate[surface = kriging_branin_local, data = test_data, label = kriging]
  Save[data = test_data, file = '$3']
 END

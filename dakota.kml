@@ -10,84 +10,98 @@ types(
     )
 )
 swift.field.dakota.file.array.int := swift:field("dakota", "file[int]")
+swift.field.swift.mapper.17020.string := swift:field("swift.mapper.17020", "string")
 swift.field.outdat.file := swift:field("outdat", "file")
 swift.field.const.float := swift:field("const", "float")
 swift.field.const.string := swift:field("const", "string")
 swift.field.templatedir.file.array.int := swift:field("templatedir", "file[int]")
-swift.field.swift.mapper.17025.string := swift:field("swift.mapper.17025", "string")
 swift.field.const.boolean := swift:field("const", "boolean")
-swift.field.swift.mapper.17004.string := swift:field("swift.mapper.17004", "string")
-swift.field.swift.mapper.17027.string := swift:field("swift.mapper.17027", "string")
+swift.field.swift.mapper.17026.string := swift:field("swift.mapper.17026", "string")
+swift.field.inlet6_Y_max.string := swift:field("inlet6_Y_max", "string")
 swift.field.outhtml.file := swift:field("outhtml", "file")
-swift.field.swift.mapper.17021.string := swift:field("swift.mapper.17021", "string")
-swift.field.swift.mapper.17023.string := swift:field("swift.mapper.17023", "string")
+swift.field.swift.mapper.17028.string := swift:field("swift.mapper.17028", "string")
+swift.field.swift.mapper.17022.string := swift:field("swift.mapper.17022", "string")
+swift.field.swift.mapper.17024.string := swift:field("swift.mapper.17024", "string")
 swift.field.swift.mapper.17007.string := swift:field("swift.mapper.17007", "string")
 swift.field.swiftconf.file := swift:field("swiftconf", "file")
-swift.field.swift.mapper.17029.string := swift:field("swift.mapper.17029", "string")
 swift.field.perr.file := swift:field("perr", "file")
-swift.field.swift.mapper.17009.string := swift:field("swift.mapper.17009", "string")
+swift.field.inlet5_X_min.string := swift:field("inlet5_X_min", "string")
 swift.field.templatedir_ofa.file.array.int := swift:field("templatedir_ofa", "file[int]")
+swift.field.swift.mapper.17030.string := swift:field("swift.mapper.17030", "string")
 swift.field.derr.file := swift:field("derr", "file")
+swift.field.inlet6_Y_min.string := swift:field("inlet6_Y_min", "string")
+swift.field.inlet5_X_max.string := swift:field("inlet5_X_max", "string")
 swift.field.swift.mapper.17014.string := swift:field("swift.mapper.17014", "string")
 swift.field.swift.mapper.17016.string := swift:field("swift.mapper.17016", "string")
 swift.field.swift.mapper.17017.string := swift:field("swift.mapper.17017", "string")
+swift.field.swift.mapper.17010.string := swift:field("swift.mapper.17010", "string")
+swift.field.swift.mapper.17032.string := swift:field("swift.mapper.17032", "string")
 swift.field.openfoam.file.array.int := swift:field("openfoam", "file[int]")
-swift.field.swift.mapper.17011.string := swift:field("swift.mapper.17011", "string")
-swift.field.swift.mapper.17013.string := swift:field("swift.mapper.17013", "string")
+swift.field.swift.mapper.17012.string := swift:field("swift.mapper.17012", "string")
+swift.field.num_cases.string := swift:field("num_cases", "string")
 swift.field.temp.int := swift:field("temp", "int")
 swift.field.swift.mapper.17019.string := swift:field("swift.mapper.17019", "string")
 swift.field.dout.file := swift:field("dout", "file")
 swift.field.const.int := swift:field("const", "int")
 swift.field.pout.file := swift:field("pout", "file")
-swift.string.17026 := swift:new(swift.field.const.string, value="logs/dakota.out")
-swift.string.17015 := swift:new(swift.field.const.string, value="dakota")
-swift.string.17020 := swift:new(swift.field.const.string, value="mapper_ofa.sh")
+swift.string.17029 := swift:new(swift.field.const.string, value="logs/dakota.out")
+swift.string.17018 := swift:new(swift.field.const.string, value="dakota")
+swift.string.17023 := swift:new(swift.field.const.string, value="mapper_ofa.sh")
 swift.string.17000 := swift:new(swift.field.const.string, value="openfoam/utils/prepInputs.sh")
-swift.string.17024 := swift:new(swift.field.const.string, value="logs/prep.err")
-swift.string.17018 := swift:new(swift.field.const.string, value="templatedir")
-swift.string.17028 := swift:new(swift.field.const.string, value="logs/dakota.err")
-swift.string.17012 := swift:new(swift.field.const.string, value="openfoam")
-swift.string.17022 := swift:new(swift.field.const.string, value="logs/prep.out")
-swift.string.17001 := swift:new(swift.field.const.string, value="dakota/start_docker.sh")
-swift.string.17008 := swift:new(swift.field.const.string, value="swift.conf")
-swift.string.17003 := swift:new(swift.field.const.string, value="results/out.dat")
-swift.string.17010 := swift:new(swift.field.const.string, value="mapper.sh")
-swift.string.17006 := swift:new(swift.field.const.string, value="results/out.html")
-swift.string.17002 := swift:new(swift.field.const.string, value="dat")
-swift.string.17005 := swift:new(swift.field.const.string, value="html")
-swift.mapper.17004 := 
-			swift:new(swift.field.swift.mapper.17004.string)
-outdat := 
-		swift:new(swift.field.outdat.file, _defline=12
-			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17004))
-		)
+swift.string.17027 := swift:new(swift.field.const.string, value="logs/prep.err")
+swift.string.17001 := swift:new(swift.field.const.string, value="dakota/update_params.sh")
+swift.string.17035 := swift:new(swift.field.const.string, value="inlet6_Y_min")
+swift.string.17021 := swift:new(swift.field.const.string, value="templatedir")
+swift.string.17031 := swift:new(swift.field.const.string, value="logs/dakota.err")
+swift.string.17002 := swift:new(swift.field.const.string, value="dakota/dakota_case.in")
+swift.string.17015 := swift:new(swift.field.const.string, value="openfoam")
+swift.string.17034 := swift:new(swift.field.const.string, value="inlet5_X_max")
+swift.string.17025 := swift:new(swift.field.const.string, value="logs/prep.out")
+swift.string.17004 := swift:new(swift.field.const.string, value="dakota/start_docker.sh")
+swift.string.17003 := swift:new(swift.field.const.string, value="dakota/runDakota.sh")
+swift.string.17011 := swift:new(swift.field.const.string, value="swift.conf")
+swift.string.17006 := swift:new(swift.field.const.string, value="results/out.dat")
+swift.string.17013 := swift:new(swift.field.const.string, value="mapper.sh")
+swift.string.17009 := swift:new(swift.field.const.string, value="results/out.html")
+swift.string.17005 := swift:new(swift.field.const.string, value="dat")
+swift.string.17008 := swift:new(swift.field.const.string, value="html")
+swift.string.17033 := swift:new(swift.field.const.string, value="inlet5_X_min")
+swift.string.17036 := swift:new(swift.field.const.string, value="inlet6_Y_max")
+swift.string.17037 := swift:new(swift.field.const.string, value="num_cases")
+inlet5_X_min := 
+			swift:new(swift.field.inlet5_X_min.string, readCount=2, _defline=11)
+inlet5_X_max := 
+			swift:new(swift.field.inlet5_X_max.string, readCount=2, _defline=12)
+inlet6_Y_min := 
+			swift:new(swift.field.inlet6_Y_min.string, readCount=2, _defline=13)
+inlet6_Y_max := 
+			swift:new(swift.field.inlet6_Y_max.string, readCount=2, _defline=14)
+num_cases := 
+			swift:new(swift.field.num_cases.string, readCount=2, _defline=15)
 swift.mapper.17007 := 
 			swift:new(swift.field.swift.mapper.17007.string)
-outhtml := 
-		swift:new(swift.field.outhtml.file, _defline=13
+outdat := 
+		swift:new(swift.field.outdat.file, _defline=17
 			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17007))
 		)
-swift.mapper.17009 := 
-			swift:new(swift.field.swift.mapper.17009.string)
-swiftconf := 
-		swift:new(swift.field.swiftconf.file, readCount=1, _defline=17, input=true
-			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17009))
+swift.mapper.17010 := 
+			swift:new(swift.field.swift.mapper.17010.string)
+outhtml := 
+		swift:new(swift.field.outhtml.file, _defline=18
+			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17010))
 		)
-swift.mapper.17011 := 
-			swift:new(swift.field.swift.mapper.17011.string)
-swift.mapper.17013 := 
-			swift:new(swift.field.swift.mapper.17013.string)
-openfoam := 
-		swift:new(swift.field.openfoam.file.array.int, readCount=1, _defline=21, input=true
-			swift:mapping("Ext", swift:parameter("exec", swift.mapper.17011)
-			swift:parameter("root", swift.mapper.17013))
+swift.mapper.17012 := 
+			swift:new(swift.field.swift.mapper.17012.string)
+swiftconf := 
+		swift:new(swift.field.swiftconf.file, readCount=1, _defline=22, input=true
+			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17012))
 		)
 swift.mapper.17014 := 
 			swift:new(swift.field.swift.mapper.17014.string)
 swift.mapper.17016 := 
 			swift:new(swift.field.swift.mapper.17016.string)
-dakota := 
-		swift:new(swift.field.dakota.file.array.int, readCount=1, _defline=22, input=true
+openfoam := 
+		swift:new(swift.field.openfoam.file.array.int, readCount=1, _defline=26, input=true
 			swift:mapping("Ext", swift:parameter("exec", swift.mapper.17014)
 			swift:parameter("root", swift.mapper.17016))
 		)
@@ -95,39 +109,48 @@ swift.mapper.17017 :=
 			swift:new(swift.field.swift.mapper.17017.string)
 swift.mapper.17019 := 
 			swift:new(swift.field.swift.mapper.17019.string)
-swift.mapper.17021 := 
-			swift:new(swift.field.swift.mapper.17021.string)
+dakota := 
+		swift:new(swift.field.dakota.file.array.int, readCount=1, _defline=27, input=true
+			swift:mapping("Ext", swift:parameter("exec", swift.mapper.17017)
+			swift:parameter("root", swift.mapper.17019))
+		)
+swift.mapper.17020 := 
+			swift:new(swift.field.swift.mapper.17020.string)
+swift.mapper.17022 := 
+			swift:new(swift.field.swift.mapper.17022.string)
+swift.mapper.17024 := 
+			swift:new(swift.field.swift.mapper.17024.string)
 templatedir_ofa := 
-		swift:new(swift.field.templatedir_ofa.file.array.int, readCount=2, _defline=24
-			swift:mapping("Ext", swift:parameter("exec", swift.mapper.17021))
+		swift:new(swift.field.templatedir_ofa.file.array.int, readCount=2, _defline=29
+			swift:mapping("Ext", swift:parameter("exec", swift.mapper.17024))
 		)
-swift.mapper.17023 := 
-			swift:new(swift.field.swift.mapper.17023.string)
+swift.mapper.17026 := 
+			swift:new(swift.field.swift.mapper.17026.string)
 pout := 
-		swift:new(swift.field.pout.file, _defline=45
-			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17023))
+		swift:new(swift.field.pout.file, _defline=50
+			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17026))
 		)
-swift.mapper.17025 := 
-			swift:new(swift.field.swift.mapper.17025.string)
+swift.mapper.17028 := 
+			swift:new(swift.field.swift.mapper.17028.string)
 perr := 
-		swift:new(swift.field.perr.file, _defline=46
-			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17025))
+		swift:new(swift.field.perr.file, _defline=51
+			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17028))
 		)
-swift.mapper.17027 := 
-			swift:new(swift.field.swift.mapper.17027.string)
+swift.mapper.17030 := 
+			swift:new(swift.field.swift.mapper.17030.string)
 dout := 
-		swift:new(swift.field.dout.file, _defline=47
-			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17027))
+		swift:new(swift.field.dout.file, _defline=52
+			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17030))
 		)
-swift.mapper.17029 := 
-			swift:new(swift.field.swift.mapper.17029.string)
+swift.mapper.17032 := 
+			swift:new(swift.field.swift.mapper.17032.string)
 derr := 
-		swift:new(swift.field.derr.file, _defline=48
-			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17029))
+		swift:new(swift.field.derr.file, _defline=53
+			swift:mapping("SingleFileMapper", swift:parameter("file", swift.mapper.17032))
 		)
 
 prepInputs := function(pout, perr, templatedir, openfoam) {
-	swift:unitStart("PROCEDURE", name="prepInputs", line=33, outputs="pout,perr,templatedir")
+	swift:unitStart("PROCEDURE", name="prepInputs", line=39, outputs="pout,perr,templatedir")
 	swift:waitFor(openfoam)
 	k:tailcall(
 		swift:execute(
@@ -135,66 +158,59 @@ prepInputs := function(pout, perr, templatedir, openfoam) {
 				swift:stageIn(openfoam)
 				swift:stageOut(pout, perr, templatedir)
 	  		swift:commands(
-	  				swift:command("bash", null, swiftscript:filename(#_line=34
+	  				swift:command("bash", null, swiftscript:filename(#_line=40
 	  				pout
-	  			), swiftscript:filename(#_line=34
+	  			), swiftscript:filename(#_line=40
 	  				perr
 	  			), swift.string.17000)
 	  		)
 		)
 	)
-	swift:unitEnd("PROCEDURE", name="prepInputs", line=33)}
+	swift:unitEnd("PROCEDURE", name="prepInputs", line=39)}
 
-runDAKOTA := function(pout, perr, outd, outh, templatedir, dakota, swiftconf) {
-	swift:unitStart("PROCEDURE", name="runDAKOTA", line=28, outputs="pout,perr,outd,outh")
-	swift:waitFor(templatedir, dakota, swiftconf)
+runDAKOTA := function(pout, perr, outd, outh, templatedir, dakota, swiftconf, i5xmin, i5xmax, i6ymin, i6ymax, ncase) {
+	swift:unitStart("PROCEDURE", name="runDAKOTA", line=33, outputs="pout,perr,outd,outh")
+	swift:waitFor(templatedir, dakota, swiftconf, i5xmin, i5xmax, i6ymin, i6ymax, ncase)
 	k:tailcall(
 		swift:execute(
 			"runDAKOTA",
 				swift:stageIn(templatedir, dakota, swiftconf)
 				swift:stageOut(pout, perr, outd, outh)
 	  		swift:commands(
-	  				swift:command("bash", null, swiftscript:filename(#_line=29
+	  				swift:command("bash", null, null, null, swift.string.17001, i5xmin, i5xmax, i6ymin, i6ymax, ncase, swift.string.17002, swift.string.17003)
+	  				swift:command("bash", null, swiftscript:filename(#_line=35
 	  				pout
-	  			), swiftscript:filename(#_line=29
+	  			), swiftscript:filename(#_line=35
 	  				perr
-	  			), swift.string.17001)
+	  			), swift.string.17004)
 	  		)
 		)
 	)
-	swift:unitEnd("PROCEDURE", name="runDAKOTA", line=28)}
+	swift:unitEnd("PROCEDURE", name="runDAKOTA", line=33)}
 
 restartLog(name = k:concat(contextAttribute("SWIFT:SCRIPT_NAME"), "-", contextAttribute("SWIFT:RUN_ID"))) {
 	swift:mains(
 		swift:startProgressTicker()
 		uparallel(
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17004)
-				swiftscript:arg$string$string$(#_line=12
-					swift.string.17002, swift.string.17003
-				)
-			)
-			swift:setFieldValue(
 				k:getAndDelete(swift.mapper.17007)
-				swiftscript:arg$string$string$(#_line=13
+				swiftscript:arg$string$string$(#_line=17
 					swift.string.17005, swift.string.17006
 				)
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17009)
-				swift.string.17008
+				k:getAndDelete(swift.mapper.17010)
+				swiftscript:arg$string$string$(#_line=18
+					swift.string.17008, swift.string.17009
+				)
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17011)
-				swift.string.17010
-			)
-			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17013)
-				swift.string.17012
+				k:getAndDelete(swift.mapper.17012)
+				swift.string.17011
 			)
 			swift:setFieldValue(
 				k:getAndDelete(swift.mapper.17014)
-				swift.string.17010
+				swift.string.17013
 			)
 			swift:setFieldValue(
 				k:getAndDelete(swift.mapper.17016)
@@ -202,39 +218,77 @@ restartLog(name = k:concat(contextAttribute("SWIFT:SCRIPT_NAME"), "-", contextAt
 			)
 			swift:setFieldValue(
 				k:getAndDelete(swift.mapper.17017)
-				swift.string.17010
+				swift.string.17013
 			)
 			swift:setFieldValue(
 				k:getAndDelete(swift.mapper.17019)
 				swift.string.17018
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17021)
-				swift.string.17020
+				k:getAndDelete(swift.mapper.17020)
+				swift.string.17013
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17023)
-				swift.string.17022
+				k:getAndDelete(swift.mapper.17022)
+				swift.string.17021
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17025)
-				swift.string.17024
+				k:getAndDelete(swift.mapper.17024)
+				swift.string.17023
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17027)
-				swift.string.17026
+				k:getAndDelete(swift.mapper.17026)
+				swift.string.17025
 			)
 			swift:setFieldValue(
-				k:getAndDelete(swift.mapper.17029)
-				swift.string.17028
+				k:getAndDelete(swift.mapper.17028)
+				swift.string.17027
 			)
-			prepInputs(#_line=49
+			swift:setFieldValue(
+				k:getAndDelete(swift.mapper.17030)
+				swift.string.17029
+			)
+			swift:setFieldValue(
+				k:getAndDelete(swift.mapper.17032)
+				swift.string.17031
+			)
+			swift:setFieldValue(#_line=11
+				swift:readVar(inlet5_X_min)
+				swiftscript:arg(#_line=11
+					swift.string.17033
+				)
+			)
+			swift:setFieldValue(#_line=12
+				swift:readVar(inlet5_X_max)
+				swiftscript:arg(#_line=12
+					swift.string.17034
+				)
+			)
+			swift:setFieldValue(#_line=13
+				swift:readVar(inlet6_Y_min)
+				swiftscript:arg(#_line=13
+					swift.string.17035
+				)
+			)
+			swift:setFieldValue(#_line=14
+				swift:readVar(inlet6_Y_max)
+				swiftscript:arg(#_line=14
+					swift.string.17036
+				)
+			)
+			swift:setFieldValue(#_line=15
+				swift:readVar(num_cases)
+				swiftscript:arg(#_line=15
+					swift.string.17037
+				)
+			)
+			prepInputs(#_line=54
 				k:getAndDelete(pout), k:getAndDelete(perr), swift:readVar(templatedir_ofa)
 				swift:readVar(openfoam)
 			)
-			runDAKOTA(#_line=50
+			runDAKOTA(#_line=55
 				k:getAndDelete(dout), k:getAndDelete(derr), k:getAndDelete(outdat), k:getAndDelete(outhtml)
-				swift:readVar(templatedir_ofa), swift:readVar(dakota), swift:readVar(swiftconf)
+				swift:readVar(templatedir_ofa), swift:readVar(dakota), swift:readVar(swiftconf), swift:readVar(inlet5_X_min), swift:readVar(inlet5_X_max), swift:readVar(inlet6_Y_min), swift:readVar(inlet6_Y_max), swift:readVar(num_cases)
 			)
 		)
 		swift:stopProgressTicker()
@@ -245,10 +299,10 @@ swift:cleanDataset(swiftconf)
 swift:cleanDataset(perr)
 swift:cleanDataset(dakota)
 swift:cleanDataset(dout)
-swift:cleanDataset(outhtml)
-swift:cleanDataset(templatedir_ofa)
-swift:cleanDataset(outdat)
 swift:cleanDataset(pout)
 swift:cleanDataset(openfoam)
 swift:cleanDataset(derr)
+swift:cleanDataset(outhtml)
+swift:cleanDataset(templatedir_ofa)
+swift:cleanDataset(outdat)
 swift:cleanDataset(shutdown=true)

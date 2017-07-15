@@ -20,7 +20,7 @@ inputs=['radius','height']
 outputs=['lateral_area','volume']
 
 fig = plotly.tools.make_subplots(rows=1, cols=len(outputs),shared_yaxes=True, shared_xaxes=True, 
-specs=[[{'is_3d': True},{'is_3d': True}]],subplot_titles=(outputs[0],outputs[1]))
+specs=[[{'is_3d': True},{'is_3d': True}]],subplot_titles=('ClipUy_avg','ClipUx_avg'))
 
 for i,out in enumerate(outputs):
 

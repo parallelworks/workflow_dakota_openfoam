@@ -12,7 +12,7 @@ method
  sampling
  sample_type lhs
  seed = 52983
- samples = 3
+ samples = NUMBER_OF_EXPS
 
 model                                                 
  id_model = 'DACE_M'                             
@@ -24,8 +24,8 @@ model
 variables
  id_variables = 'V1'
  uniform_uncertain = 2
- upper_bounds     	8		9   
- lower_bounds     	5   		4
+ upper_bounds     	INLET5_X_MAX		INLET6_Y_MAX   
+ lower_bounds     	INLET5_X_MIN   		INLET6_Y_MIN
  descriptors 'inlet5_X' 'inlet6_Y'
 
 interface
